@@ -12,8 +12,10 @@ const MODELS = [process.env.GROQ_MODEL, 'llama-3.3-70b-versatile', 'meta-llama/l
 const SYSTEM = `Sos el asistente de R8T, un repricer visual para vendedores de Mercado Libre (Argentina), dentro de Real Trends.
 El usuario te pide una estrategia de precios y vos la CONSTRUÍS como un PROGRAMA de bloques.
 
-Respondé SIEMPRE con un ÚNICO JSON válido (sin texto afuera) con esta forma exacta:
-{"reply":"explicación corta en español rioplatense (2-3 frases)","name":"Nombre corto","program":{"root":[ ...bloques... ]}}
+Respondé SIEMPRE con un ÚNICO JSON válido (sin texto afuera):
+{"reply":"texto corto en español rioplatense","name":"Nombre corto de la estrategia","program":{"root":[ ...bloques... ]}}
+El campo "program" (y "name") es OPCIONAL: incluilo SOLO cuando el usuario pida CREAR o MODIFICAR la estrategia.
+Si el usuario solo saluda, agradece, pregunta qué podés hacer, o hace charla, respondé ÚNICAMENTE con "reply" (sin "program" ni "name").
 
 Cada bloque es {"type":"<tipo>","params":{...}}. Los contenedores además llevan "branches".
 Usá SOLO estos tipos y params:
@@ -49,7 +51,11 @@ variable ∈ dif_competidor|competitor|margen|precio|costo|stock|visitas|competi
 op ∈ gt|lt|gte|lte|eq|neq|absgt|abslt   (absgt = difiere en más de ±valor; útil con dif_competidor)
 
 Reglas:
-- Empezá normalmente con comision_ml e impuestos_generales, incluí piso_rentabilidad para proteger el margen, y TERMINÁ con fijar_precio.
+- Sos un asistente de PRECIOS y AUTOMATIZACIÓN para Mercado Libre. Podés saludar y explicar qué hacés.
+  Si te preguntan algo ajeno a precios/repricing/automatización, respondé amable que solo ayudás con eso (sin program).
+- Cuando MODIFIQUES la estrategia, partí del "Programa actual" que te paso y cambiá SOLO lo que el usuario pide;
+  el resto dejalo IDÉNTICO. No repitas cambios ya hechos (ej: si el IVA ya está en 24, no le sumes otra vez).
+- Al CREAR una estrategia de cero: empezá con comision_ml e impuestos_generales, incluí piso_rentabilidad y TERMINÁ con fijar_precio.
 - Sé realista y conservador para Mercado Libre AR. Todo desde la óptica del vendedor.
 - No inventes tipos ni params que no estén en la lista.`;
 
@@ -69,10 +75,15 @@ module.exports = async (req, res) => {
     const body = await readBody(req);
     const userMsg = String(body.message || '').slice(0, 2000);
     const strategy = String(body.strategy || '').slice(0, 2000);
+    const program = body.program && typeof body.program === 'object' ? body.program : null;
     const history = Array.isArray(body.history) ? body.history.slice(-8) : [];
 
+    let ctx = '';
+    if (strategy) ctx += `\n\nEstrategia actual (en palabras): ${strategy}`;
+    if (program) { try { ctx += `\n\nPrograma actual (JSON — editá SOBRE esto, cambiando solo lo pedido): ${JSON.stringify(program).slice(0, 6000)}`; } catch (e) {} }
+
     const messages = [
-      { role: 'system', content: SYSTEM + (strategy ? `\n\nEstrategia actual del usuario: ${strategy}` : '') },
+      { role: 'system', content: SYSTEM + ctx },
       ...history.filter(m => m && m.role && m.content).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, 2000) })),
       { role: 'user', content: userMsg },
     ];

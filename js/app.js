@@ -162,7 +162,7 @@ function sanitizeProgram(root) {
 async function callAssistant(message, history) {
   const r = await fetch('/api/assistant', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history, strategy: describeProgram(RE.getProgram()).map(s => s.text).join(' ') }),
+    body: JSON.stringify({ message, history, strategy: describeProgram(RE.getProgram()).map(s => s.text).join(' '), program: RE.getProgram() }),
   });
   if (!r.ok) throw new Error('http ' + r.status);
   return await r.json();
@@ -202,13 +202,16 @@ function initChat() {
       typing.remove();
       const reply = res.reply || 'Listo.';
       history.push({ role: 'assistant', content: reply });
-      const root = sanitizeProgram(res.program && (res.program.root || res.program));
+      const root = res.program ? sanitizeProgram(res.program.root || res.program) : [];
       if (root.length) {
         RE.loadProgram({ target: RE.getTarget(), root });
         if (res.name) document.getElementById('stratName').value = res.name;
         onGraphChange(); goTab('result');
-        add('bot', `${escapeHtml(reply)}<br><span class="muted" style="font-size:11px">✓ Estrategia cargada en el editor</span>`);
-      } else { add('bot', escapeHtml(reply)); }
+        add('bot', `${escapeHtml(reply)}<div class="chat__ok">${icon('checkc')} Estrategia aplicada en el editor</div>`);
+        toast('Estrategia aplicada por el asistente', 'ok');
+      } else {
+        add('bot', escapeHtml(reply));   // solo charla, no toca el editor
+      }
     } catch (err) {
       typing.remove();
       add('bot', '<span class="muted">No pude conectar con la IA acá; te sugiero una estrategia lista:</span>');
@@ -427,7 +430,10 @@ function starterRoot() {
 function newStrategy() {
   const t = RE.getTarget() || { mode: 'product', id: 'p1' };
   RE.loadProgram({ target: t, root: starterRoot() });
-  document.getElementById('stratName').value = 'Mi estrategia'; onGraphChange();
+  document.getElementById('stratName').value = 'Mi estrategia';
+  const el = document.getElementById('stratName'); el.focus(); el.select();   // para que se note: quedás editando el nombre
+  onGraphChange();
+  toast('Nueva estrategia creada', 'ok');
 }
 
 /* ---------- onChange ---------- */

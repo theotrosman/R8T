@@ -164,6 +164,8 @@
 .chat__msg--bot { background: var(--rt-surface-2); border: 1px solid var(--rt-line); align-self: flex-start; border-bottom-left-radius: 4px; }
 .chat__msg--user { background: var(--rt-blue); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
 .chat__msg .btn { margin-top: 8px; }
+.chat__ok { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; font-weight: 800; color: #10633f; background: var(--ok-050); border-radius: 8px; padding: 5px 9px; }
+.chat__ok svg { width: 14px; height: 14px; color: var(--ok); }
 .chat__quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 8px; }
 .chat__quick button { border: 1px solid var(--rt-line); background: #fff; color: var(--rt-blue); border-radius: 20px; padding: 6px 11px; font-size: 12px; font-weight: 700; }
 .chat__quick button:hover { background: var(--rt-blue-050); }
