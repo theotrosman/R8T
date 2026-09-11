@@ -1,387 +1,385 @@
 /* ============================================================
-   R8T · editor.js  —  motor del canvas (pan / zoom / nodos / conexiones)
-   Sin dependencias externas. Vanilla JS.
+   R8T · editor.js  (v2 — flujo apilable híbrido)
+   Vertical para el flujo principal; horizontal para las ramas
+   SÍ / SI NO de las condiciones. Controles editables en línea.
+   Sin dependencias externas.
    ============================================================ */
 
 const RE = (() => {
-  let canvasEl, worldEl, edgesEl, tempPath, hintEl;
-  const state = { nodes: [], connections: [], view: { x: 60, y: 40, scale: 1 }, selected: null };
-  const cbs = { onSelect: () => {}, onChange: () => {} };
-  let uid = 1;
-  const MIN_Z = 0.35, MAX_Z = 1.8;
+  let canvasEl, worldEl, flowEl;
+  const cbs = { onChange: () => {}, targetHTML: () => '' };
+  let program = { target: { mode: 'product', id: 'p1' }, root: [] };
+  let scale = 1, selected = null, uid = 1;
+  const MINZ = 0.5, MAXZ = 1.5;
 
-  function def(type) { return BLOCKS[type] || (window.CUSTOM_BLOCKS && window.CUSTOM_BLOCKS[type]); }
-  function catColor(type) { const d = def(type); return d ? (CAT_MAP[d.cat] ? CAT_MAP[d.cat].color : 'var(--rt-blue)') : 'var(--rt-blue)'; }
-  function newId() { return 'n' + (uid++) + Date.now().toString(36).slice(-3); }
+  /* ---------- utilidades de árbol ---------- */
+  const newId = () => 's' + (uid++) + Date.now().toString(36).slice(-3);
+  function stackByPath(path) {
+    if (path === 'root') return program.root;
+    const [id, branch] = path.split('.');
+    const f = findStep(id); if (!f) return null;
+    f.step.branches = f.step.branches || { si: [], no: [] };
+    return f.step.branches[branch];
+  }
+  function findStep(id, stack = program.root, parent = null) {
+    for (let i = 0; i < stack.length; i++) {
+      const s = stack[i];
+      if (s.id === id) return { step: s, arr: stack, index: i };
+      if (s.branches) {
+        for (const b of ['si', 'no']) {
+          const r = findStep(id, s.branches[b] || [], s);
+          if (r) return r;
+        }
+      }
+    }
+    return null;
+  }
+  function collectIds(step, acc = []) {
+    acc.push(step.id);
+    if (step.branches) ['si', 'no'].forEach(b => (step.branches[b] || []).forEach(c => collectIds(c, acc)));
+    return acc;
+  }
+  function mergedParams(step) {
+    const d = blockDef(step.type); const out = {};
+    (d.params || []).forEach(pr => { out[pr.key] = (step.params && step.params[pr.key] !== undefined) ? step.params[pr.key] : pr.value; });
+    return out;
+  }
+  function makeStep(type) {
+    const d = blockDef(type);
+    const st = { id: newId(), type, params: {} };
+    if (d.container) st.branches = { si: [], no: [] };
+    return st;
+  }
 
   /* ---------- init ---------- */
   function init(opts) {
-    canvasEl = opts.canvas; worldEl = opts.world; edgesEl = opts.edges; hintEl = opts.hint;
-    cbs.onSelect = opts.onSelect || cbs.onSelect;
+    canvasEl = opts.canvas; worldEl = opts.world; flowEl = opts.flow;
     cbs.onChange = opts.onChange || cbs.onChange;
+    cbs.targetHTML = opts.targetHTML || cbs.targetHTML;
 
-    tempPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    tempPath.setAttribute('class', 'edge-temp'); tempPath.style.display = 'none';
-    edgesEl.appendChild(tempPath);
+    // delegación de controles
+    flowEl.addEventListener('input', onInput);
+    flowEl.addEventListener('change', onChangeCtrl);
+    flowEl.addEventListener('click', onClick);
 
-    canvasEl.addEventListener('mousedown', onCanvasMouseDown);
-    canvasEl.addEventListener('wheel', onWheel, { passive: false });
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    canvasEl.addEventListener('click', onCanvasClick);
+    // DnD
+    flowEl.addEventListener('dragstart', onDragStart);
+    flowEl.addEventListener('dragend', onDragEnd);
+    flowEl.addEventListener('dragover', onDragOver);
+    flowEl.addEventListener('drop', onDrop);
+    flowEl.addEventListener('dragleave', onDragLeave);
 
-    // drop desde la paleta
-    canvasEl.addEventListener('dragover', e => { e.preventDefault(); });
-    canvasEl.addEventListener('drop', e => {
-      e.preventDefault();
-      const type = e.dataTransfer.getData('text/r8t-block');
-      if (type) { const w = screenToWorld(e.clientX, e.clientY); addNodeAt(type, w.x - 117, w.y - 30); }
-    });
-    applyTransform();
+    // pan con arrastre en vacío
+    canvasEl.addEventListener('mousedown', onPanStart);
+    // zoom con ctrl/cmd + rueda
+    canvasEl.addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1); } }, { passive: false });
+    // cerrar popovers
+    document.addEventListener('mousedown', e => { if (!e.target.closest('.addmenu') && !e.target.closest('[data-add]') && !e.target.closest('.sb__menu')) closePop(); });
   }
 
-  /* ---------- coordenadas ---------- */
-  function screenToWorld(cx, cy) {
-    const r = canvasEl.getBoundingClientRect();
-    return { x: (cx - r.left - state.view.x) / state.view.scale, y: (cy - r.top - state.view.y) / state.view.scale };
-  }
-  function applyTransform() {
-    const v = state.view;
-    worldEl.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.scale})`;
-    canvasEl.style.backgroundPosition = `${v.x}px ${v.y}px, ${v.x}px ${v.y}px, ${v.x}px ${v.y}px`;
-    canvasEl.style.backgroundSize = `${26 * v.scale}px ${26 * v.scale}px, ${130 * v.scale}px ${130 * v.scale}px, ${130 * v.scale}px ${130 * v.scale}px`;
-    const zl = document.getElementById('zoomLabel'); if (zl) zl.textContent = Math.round(v.scale * 100) + '%';
-  }
-
-  /* ---------- gestos ---------- */
-  let gesture = null; // {type:'pan'|'node'|'connect', ...}
-
-  function onCanvasMouseDown(e) {
-    const portEl = e.target.closest('.port');
-    const nodeEl = e.target.closest('.node');
-    if (portEl) { startConnect(e, portEl); return; }
-    if (nodeEl && e.target.closest('.node__head')) { startNodeDrag(e, nodeEl); return; }
-    if (nodeEl) return; // click dentro del nodo (no header) no paneea
-    // pan
-    gesture = { type: 'pan', sx: e.clientX, sy: e.clientY, ox: state.view.x, oy: state.view.y, moved: false };
+  /* ---------- pan ---------- */
+  function onPanStart(e) {
+    if (e.target.closest('.sb, .sc, .stack-add, .ctrl, button, input, select, .addmenu')) return;
+    const sx = e.clientX, sy = e.clientY, sl = canvasEl.scrollLeft, st = canvasEl.scrollTop;
     canvasEl.classList.add('panning');
+    const mv = ev => { canvasEl.scrollLeft = sl - (ev.clientX - sx); canvasEl.scrollTop = st - (ev.clientY - sy); };
+    const up = () => { canvasEl.classList.remove('panning'); window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+    window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
   }
 
-  function startNodeDrag(e, nodeEl) {
-    e.preventDefault();
-    const id = nodeEl.dataset.id;
-    const node = state.nodes.find(n => n.id === id);
-    selectNode(id);
-    gesture = { type: 'node', id, sx: e.clientX, sy: e.clientY, ox: node.x, oy: node.y, moved: false, el: nodeEl };
-    nodeEl.classList.add('dragging');
-  }
-
-  function startConnect(e, portEl) {
-    e.preventDefault(); e.stopPropagation();
-    const io = portEl.dataset.io;
-    if (io === 'in') return; // conexiones salen de output
-    gesture = { type: 'connect', fromNode: portEl.dataset.node, fromPort: portEl.dataset.port, portEl };
-    canvasEl.classList.add('is-connecting');
-    tempPath.style.display = '';
-  }
-
-  function onMouseMove(e) {
-    if (!gesture) return;
-    if (gesture.type === 'pan') {
-      state.view.x = gesture.ox + (e.clientX - gesture.sx);
-      state.view.y = gesture.oy + (e.clientY - gesture.sy);
-      if (Math.abs(e.clientX - gesture.sx) + Math.abs(e.clientY - gesture.sy) > 3) gesture.moved = true;
-      applyTransform();
-    } else if (gesture.type === 'node') {
-      const dx = (e.clientX - gesture.sx) / state.view.scale;
-      const dy = (e.clientY - gesture.sy) / state.view.scale;
-      if (Math.abs(dx) + Math.abs(dy) > 2) gesture.moved = true;
-      const node = state.nodes.find(n => n.id === gesture.id);
-      node.x = Math.round((gesture.ox + dx) / 4) * 4;  // snap suave a la grilla
-      node.y = Math.round((gesture.oy + dy) / 4) * 4;
-      gesture.el.style.left = node.x + 'px'; gesture.el.style.top = node.y + 'px';
-      renderEdges();
-    } else if (gesture.type === 'connect') {
-      const from = portCenterWorld(gesture.fromNode, 'out', gesture.fromPort);
-      const to = screenToWorld(e.clientX, e.clientY);
-      tempPath.setAttribute('d', bezier(from.x, from.y, to.x, to.y));
-      const hov = document.elementFromPoint(e.clientX, e.clientY);
-      document.querySelectorAll('.port.hot').forEach(p => p.classList.remove('hot'));
-      const hp = hov && hov.closest && hov.closest('.port[data-io="in"]');
-      if (hp) hp.classList.add('hot');
-    }
-  }
-
-  function onMouseUp(e) {
-    if (!gesture) return;
-    if (gesture.type === 'pan') canvasEl.classList.remove('panning');
-    if (gesture.type === 'node') { gesture.el.classList.remove('dragging'); if (gesture.moved) cbs.onChange(); }
-    if (gesture.type === 'connect') {
-      canvasEl.classList.remove('is-connecting');
-      tempPath.style.display = 'none';
-      const hov = document.elementFromPoint(e.clientX, e.clientY);
-      const hp = hov && hov.closest && hov.closest('.port[data-io="in"]');
-      document.querySelectorAll('.port.hot').forEach(p => p.classList.remove('hot'));
-      if (hp && hp.dataset.node !== gesture.fromNode) addConnection(gesture.fromNode, gesture.fromPort, hp.dataset.node);
-    }
-    gesture = null;
-  }
-
-  function onCanvasClick(e) {
-    if (e.target === canvasEl || e.target === worldEl) {
-      if (!gesture || !gesture.moved) { selectNode(null); }
-    }
-  }
-
-  function onWheel(e) {
-    e.preventDefault();
-    const r = canvasEl.getBoundingClientRect();
-    const mx = e.clientX - r.left, my = e.clientY - r.top;
-    const before = state.view.scale;
-    const delta = -e.deltaY * 0.0016;
-    let scale = Math.min(MAX_Z, Math.max(MIN_Z, before * (1 + delta)));
-    // zoom hacia el cursor
-    state.view.x = mx - (mx - state.view.x) * (scale / before);
-    state.view.y = my - (my - state.view.y) * (scale / before);
-    state.view.scale = scale;
-    applyTransform();
-  }
-
-  /* ---------- conexiones ---------- */
-  function addConnection(fromNode, fromPort, toNode) {
-    // un input recibe una sola conexión → reemplaza
-    state.connections = state.connections.filter(c => c.to.node !== toNode);
-    // evitar duplicado exacto
-    if (!state.connections.find(c => c.from.node === fromNode && c.from.port === fromPort && c.to.node === toNode)) {
-      state.connections.push({ id: 'c' + newId(), from: { node: fromNode, port: fromPort }, to: { node: toNode, port: 'in' } });
-    }
-    render(); cbs.onChange();
-  }
-  function removeConnection(id) { state.connections = state.connections.filter(c => c.id !== id); render(); cbs.onChange(); }
-
-  function portCenterWorld(nodeId, io, port) {
-    const el = document.getElementById(`port-${nodeId}-${io}-${port}`);
-    if (!el) { const n = state.nodes.find(x => x.id === nodeId); return { x: (n ? n.x : 0) + (io === 'out' ? 234 : 0), y: (n ? n.y : 0) + 30 }; }
-    const r = el.getBoundingClientRect(), cr = canvasEl.getBoundingClientRect();
-    return {
-      x: (r.left + r.width / 2 - cr.left - state.view.x) / state.view.scale,
-      y: (r.top + r.height / 2 - cr.top - state.view.y) / state.view.scale,
-    };
-  }
-  function bezier(x1, y1, x2, y2) {
-    const dx = Math.max(45, Math.abs(x2 - x1) * 0.5);
-    return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-  }
+  /* ---------- zoom ---------- */
+  function applyZoom() { flowEl.style.zoom = scale; const zl = document.getElementById('zoomLabel'); if (zl) zl.textContent = Math.round(scale * 100) + '%'; }
+  function zoomBy(f) { scale = clamp(+(scale * f).toFixed(3), MINZ, MAXZ); applyZoom(); }
+  function setZoom(z) { scale = clamp(z, MINZ, MAXZ); applyZoom(); }
+  function fitView() { setZoom(1); canvasEl.scrollTo({ top: 0, left: (worldEl.scrollWidth - canvasEl.clientWidth) / 2, behavior: 'smooth' }); }
 
   /* ---------- render ---------- */
   function render() {
-    // nodos
-    worldEl.querySelectorAll('.node').forEach(n => n.remove());
-    state.nodes.forEach(renderNode);
-    renderEdges();
-    if (hintEl) hintEl.style.display = state.nodes.length ? 'none' : '';
+    flowEl.innerHTML = '';
+    // tarjeta de destino (producto/grupo) = cabecera del flujo
+    const head = document.createElement('div');
+    head.className = 'target-card';
+    head.innerHTML = cbs.targetHTML();
+    flowEl.appendChild(head);
+    flowEl.appendChild(connector());
+    // pila raíz
+    flowEl.appendChild(renderStack(program.root, 'root'));
+    applyZoom();
   }
+  function connector() { const c = document.createElement('div'); c.className = 'connector'; return c; }
 
-  function renderNode(node) {
-    const d = def(node.type); if (!d) return;
-    const color = catColor(node.type);
-    const cat = CAT_MAP[d.cat];
-    const el = document.createElement('div');
-    el.className = 'node' + (state.selected === node.id ? ' selected' : '');
-    el.dataset.id = node.id;
-    el.style.left = node.x + 'px'; el.style.top = node.y + 'px';
-    el.style.setProperty('--accent', color);
-
-    const p = mergedParams(node);
-    let rows = '';
-    const summ = d.summary ? d.summary(p, window.__lastCtx) : [];
-    if (summ && summ.length) rows = summ.map(r => `<div class="node__row"><span class="k">${r[0]}</span><span class="v accent">${r[1]}</span></div>`).join('');
-    else rows = `<div class="node__empty">Sin parámetros</div>`;
-
-    el.innerHTML = `
-      <div class="node__bar"></div>
-      <div class="node__head">
-        <div class="node__icon">${icon(d.icon)}</div>
-        <div class="node__titles">
-          <div class="node__title">${d.name}</div>
-          <div class="node__sub">${cat ? cat.name : ''}</div>
-        </div>
-        <button class="node__menu" data-menu title="Opciones">${icon('dots')}</button>
-      </div>
-      <div class="node__body">${rows}</div>`;
-
-    // puertos
-    if (d.inputs) el.appendChild(makePort(node.id, 'in', 'in', null, 0.5));
-    const outs = d.outputs || [];
-    outs.forEach((o, i) => {
-      const pos = outs.length === 1 ? 0.5 : (i === 0 ? 0.34 : 0.66);
-      el.appendChild(makePort(node.id, 'out', o.id, o, pos));
+  function renderStack(stack, path) {
+    const wrap = document.createElement('div');
+    wrap.className = 'stack' + (path === 'root' ? ' stack--root' : ''); wrap.dataset.stack = path;
+    stack.forEach((step, i) => {
+      if (i > 0) wrap.appendChild(connector());
+      wrap.appendChild(renderStep(step));
     });
-
-    worldEl.appendChild(el);
-
-    // posicionar puertos verticalmente según alto real
-    requestAnimationFrame(() => positionPorts(el, d));
-
-    el.querySelector('[data-menu]').addEventListener('mousedown', ev => { ev.stopPropagation(); });
-    el.querySelector('[data-menu]').addEventListener('click', ev => { ev.stopPropagation(); openNodeMenu(ev, node.id); });
+    if (stack.length) wrap.appendChild(connector());
+    // zona de agregar
+    const add = document.createElement('button');
+    add.className = 'stack-add'; add.dataset.add = path;
+    add.innerHTML = icon('plus') + '<span>Agregar bloque</span>';
+    wrap.appendChild(add);
+    return wrap;
   }
 
-  function makePort(nodeId, io, port, meta, ratio) {
+  function renderStep(step) {
+    const d = blockDef(step.type);
+    if (!d) { const e = document.createElement('div'); e.textContent = '¿bloque?'; return e; }
+    const color = (CAT_MAP[d.cat] || {}).color || 'var(--rt-blue)';
+    const p = mergedParams(step);
+    if (d.container) {
+      const el = document.createElement('div');
+      el.className = 'sc' + (selected === step.id ? ' is-sel' : ''); el.dataset.id = step.id; el.draggable = true;
+      el.style.setProperty('--accent', color);
+      step.branches = step.branches || { si: [], no: [] };
+      el.innerHTML = `
+        <div class="sc__head">
+          <span class="grip" title="Arrastrar">${icon('drag')}</span>
+          <span class="sb__icon" style="background:${color}">${icon(d.icon)}</span>
+          <span class="sc__when">Cuando</span>
+          <span class="sc__cond">${fieldsInline(d, p)}</span>
+          <button class="sb__menu" data-menu="${step.id}" title="Opciones">${icon('dots')}</button>
+        </div>
+        <div class="sc__branches">
+          <div class="sc__branch sc__branch--si">
+            <div class="sc__label sc__label--si">${icon('check')} Entonces</div>
+            <div data-slot="si"></div>
+          </div>
+          <div class="sc__branch sc__branch--no">
+            <div class="sc__label sc__label--no">${icon('close')} Si no</div>
+            <div data-slot="no"></div>
+          </div>
+        </div>`;
+      el.querySelector('[data-slot="si"]').appendChild(renderStack(step.branches.si, step.id + '.si'));
+      el.querySelector('[data-slot="no"]').appendChild(renderStack(step.branches.no, step.id + '.no'));
+      return el;
+    }
+    // bloque simple
     const el = document.createElement('div');
-    let cls = 'port port--' + io;
-    if (meta && meta.kind) cls += ' port--' + meta.kind;
-    el.className = cls;
-    el.id = `port-${nodeId}-${io}-${port}`;
-    el.dataset.node = nodeId; el.dataset.io = io; el.dataset.port = port; el.dataset.ratio = ratio;
-    if (meta && meta.label) el.innerHTML = `<span class="port__label">${meta.label}</span>`;
+    el.className = 'sb' + (selected === step.id ? ' is-sel' : ''); el.dataset.id = step.id; el.draggable = true;
+    el.style.setProperty('--accent', color);
+    el.innerHTML = `
+      <span class="grip" title="Arrastrar">${icon('drag')}</span>
+      <span class="sb__icon" style="background:${color}">${icon(d.icon)}</span>
+      <div class="sb__content">
+        <div class="sb__title">${d.name}</div>
+        <div class="sb__fields">${fieldsInline(d, p)}</div>
+      </div>
+      <button class="sb__menu" data-menu="${step.id}" title="Opciones">${icon('dots')}</button>`;
     return el;
   }
-  function positionPorts(nodeEl, d) {
-    const h = nodeEl.offsetHeight;
-    nodeEl.querySelectorAll('.port').forEach(p => {
-      const ratio = parseFloat(p.dataset.ratio);
-      if (p.classList.contains('port--out') && (d.outputs || []).length > 1) p.style.top = (h * ratio - 7.5) + 'px';
-      else p.style.top = (h * ratio - 7.5) + 'px';
-      p.style.transform = 'none';
-    });
-    renderEdges();
-  }
 
-  function renderEdges() {
-    // limpiar (menos temp)
-    edgesEl.querySelectorAll('.edge, .edge-hit, .edge-group').forEach(e => e.remove());
-    state.connections.forEach(c => {
-      const from = portCenterWorld(c.from.node, 'out', c.from.port);
-      const to = portCenterWorld(c.to.node, 'in', 'in');
-      const dpath = bezier(from.x, from.y, to.x, to.y);
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      hit.setAttribute('class', 'edge-hit'); hit.setAttribute('d', dpath);
-      hit.style.pointerEvents = 'stroke'; hit.style.cursor = 'pointer';
-      hit.addEventListener('click', () => { if (confirm('¿Eliminar esta conexión?')) removeConnection(c.id); });
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('class', 'edge edge-flow'); path.setAttribute('d', dpath);
-      edgesEl.appendChild(hit); edgesEl.appendChild(path);
-    });
+  /* ---------- controles en línea ---------- */
+  function fieldsInline(d, p) {
+    return (d.params || []).map(pr => field(pr, p[pr.key])).join('');
   }
-
-  /* ---------- API pública de nodos ---------- */
-  function mergedParams(node) {
-    const d = def(node.type); const out = {};
-    (d.params || []).forEach(pr => { out[pr.key] = (node.params && node.params[pr.key] !== undefined) ? node.params[pr.key] : pr.value; });
-    return out;
-  }
-  function addNodeAt(type, x, y) {
-    const d = def(type); if (!d) return;
-    // producto/trigger: uno solo
-    if (type === 'producto' && state.nodes.some(n => n.type === 'producto')) { window.toast && toast('Ya existe un bloque Producto'); return; }
-    const node = { id: newId(), type, x: Math.round(x), y: Math.round(y), params: {} };
-    state.nodes.push(node); render(); selectNode(node.id); cbs.onChange();
-    return node;
-  }
-  function addNodeCenter(type) {
-    const r = canvasEl.getBoundingClientRect();
-    const w = screenToWorld(r.left + r.width / 2, r.top + r.height / 2);
-    return addNodeAt(type, w.x - 117, w.y - 40);
-  }
-  function selectNode(id) {
-    state.selected = id;
-    worldEl.querySelectorAll('.node').forEach(n => n.classList.toggle('selected', n.dataset.id === id));
-    cbs.onSelect(id ? state.nodes.find(n => n.id === id) : null);
-  }
-  function updateNodeParams(id, params) {
-    const n = state.nodes.find(x => x.id === id); if (!n) return;
-    n.params = { ...n.params, ...params };
-    // refrescar cuerpo del nodo
-    const el = worldEl.querySelector(`.node[data-id="${id}"]`);
-    if (el) { const d = def(n.type); const body = el.querySelector('.node__body');
-      const summ = d.summary ? d.summary(mergedParams(n), window.__lastCtx) : [];
-      body.innerHTML = (summ && summ.length) ? summ.map(r => `<div class="node__row"><span class="k">${r[0]}</span><span class="v accent">${r[1]}</span></div>`).join('') : `<div class="node__empty">Sin parámetros</div>`;
-      requestAnimationFrame(() => renderEdges());
+  function field(pr, val) {
+    if (pr.type === 'number') {
+      return `<span class="fld"><span class="fld__l">${pr.label}</span>
+        <span class="ctrl ctrl--num">
+          <button class="ctrl__step" data-step="-1" data-fk="${pr.key}" tabindex="-1">−</button>
+          <input class="ctrl__in" type="number" data-fk="${pr.key}" value="${val}" min="${pr.min ?? ''}" max="${pr.max ?? ''}" step="${pr.step ?? 1}">
+          ${pr.unit ? `<span class="ctrl__u">${pr.unit}</span>` : ''}
+          <button class="ctrl__step" data-step="1" data-fk="${pr.key}" tabindex="-1">+</button>
+        </span></span>`;
     }
-    cbs.onChange();
-  }
-  function deleteNode(id) {
-    state.nodes = state.nodes.filter(n => n.id !== id);
-    state.connections = state.connections.filter(c => c.from.node !== id && c.to.node !== id);
-    if (state.selected === id) selectNode(null);
-    render(); cbs.onChange();
-  }
-  function duplicateNode(id) {
-    const n = state.nodes.find(x => x.id === id); if (!n) return;
-    if (n.type === 'producto') return;
-    const copy = { id: newId(), type: n.type, x: n.x + 40, y: n.y + 40, params: { ...n.params } };
-    state.nodes.push(copy); render(); selectNode(copy.id); cbs.onChange();
+    if (pr.type === 'select') {
+      return `<span class="fld"><span class="fld__l">${pr.label}</span>
+        <select class="ctrl ctrl--sel" data-fk="${pr.key}">${pr.options.map(o => `<option value="${o[0]}" ${String(val) === String(o[0]) ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></span>`;
+    }
+    if (pr.type === 'toggle') {
+      return `<label class="fld fld--tog"><input type="checkbox" class="ctrl ctrl--tog" data-fk="${pr.key}" ${val ? 'checked' : ''}><span class="tgl"></span><span class="fld__l">${pr.label}</span></label>`;
+    }
+    return '';
   }
 
-  /* ---------- menú contextual ---------- */
-  function openNodeMenu(ev, id) {
-    closeCtx();
-    const n = state.nodes.find(x => x.id === id);
-    const m = document.createElement('div'); m.className = 'ctx-menu'; m.id = 'ctxMenu';
-    m.style.left = ev.clientX + 'px'; m.style.top = ev.clientY + 'px';
+  /* ---------- eventos de controles ---------- */
+  function stepOf(node) { const c = node.closest('[data-id]'); return c ? findStep(c.dataset.id) : null; }
+  function onInput(e) {
+    if (!e.target.classList.contains('ctrl__in')) return;
+    const f = stepOf(e.target); if (!f) return;
+    let v = parseFloat(e.target.value); if (isNaN(v)) return;
+    f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = v;
+    cbs.onChange(); // no re-render: preserva el foco
+  }
+  function onChangeCtrl(e) {
+    if (e.target.classList.contains('ctrl--sel')) {
+      const f = stepOf(e.target); if (!f) return;
+      f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.value;
+      render(); cbs.onChange();
+    } else if (e.target.classList.contains('ctrl--tog')) {
+      const f = stepOf(e.target); if (!f) return;
+      f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.checked;
+      render(); cbs.onChange();
+    } else if (e.target.classList.contains('ctrl__in')) {
+      // al salir/enter, normaliza límites
+      const f = stepOf(e.target); if (!f) return;
+      const d = blockDef(f.step.type); const pr = d.params.find(x => x.key === e.target.dataset.fk);
+      let v = parseFloat(e.target.value); if (isNaN(v)) v = pr.value;
+      if (pr.min !== undefined) v = Math.max(pr.min, v); if (pr.max !== undefined) v = Math.min(pr.max, v);
+      e.target.value = v; f.step.params[e.target.dataset.fk] = v; cbs.onChange();
+    }
+  }
+  function onClick(e) {
+    const step = e.target.closest('.ctrl__step');
+    if (step) {
+      const wrap = step.closest('.ctrl--num'); const input = wrap.querySelector('.ctrl__in');
+      const f = stepOf(step); if (!f) return;
+      const d = blockDef(f.step.type); const pr = d.params.find(x => x.key === step.dataset.fk);
+      let v = (parseFloat(input.value) || 0) + (pr.step || 1) * parseInt(step.dataset.step, 10);
+      if (pr.min !== undefined) v = Math.max(pr.min, v); if (pr.max !== undefined) v = Math.min(pr.max, v);
+      v = Math.round(v * 100) / 100; input.value = v;
+      f.step.params = f.step.params || {}; f.step.params[pr.key] = v; cbs.onChange();
+      return;
+    }
+    const menu = e.target.closest('[data-menu]');
+    if (menu) { e.stopPropagation(); openNodeMenu(menu, menu.dataset.menu); return; }
+    const add = e.target.closest('[data-add]');
+    if (add) { e.stopPropagation(); openAddMenu(add, add.dataset.add); return; }
+    // seleccionar
+    const card = e.target.closest('.sb, .sc');
+    if (card) { selected = card.dataset.id; flowEl.querySelectorAll('.is-sel').forEach(x => x.classList.remove('is-sel')); card.classList.add('is-sel'); }
+  }
+
+  /* ---------- menú de nodo ---------- */
+  function openNodeMenu(anchor, id) {
+    closePop();
+    const r = anchor.getBoundingClientRect();
+    const m = document.createElement('div'); m.className = 'addmenu addmenu--node';
+    m.style.left = Math.min(r.left, innerWidth - 190) + 'px'; m.style.top = (r.bottom + 4) + 'px';
     m.innerHTML = `
+      <button data-a="up">${icon('chevron')} Subir</button>
+      <button data-a="down">${icon('chevron')} Bajar</button>
       <button data-a="dup">${icon('copy')} Duplicar</button>
-      <button data-a="center">${icon('target')} Centrar</button>
-      <hr>
-      <button class="danger" data-a="del">${icon('trash')} Eliminar</button>`;
-    if (n.type === 'producto') m.querySelector('[data-a="dup"]').remove();
+      <hr><button class="danger" data-a="del">${icon('trash')} Eliminar</button>`;
     document.body.appendChild(m);
-    m.addEventListener('click', e => {
-      const a = e.target.closest('button')?.dataset.a;
-      if (a === 'dup') duplicateNode(id);
-      if (a === 'del') deleteNode(id);
-      if (a === 'center') { const nn = state.nodes.find(x => x.id === id); centerOn(nn); }
-      closeCtx();
+    m.querySelector('[data-a="up"]').querySelector('svg').style.transform = 'rotate(180deg)';
+    m.addEventListener('click', ev => {
+      const a = ev.target.closest('button')?.dataset.a;
+      if (a === 'del') deleteStep(id);
+      if (a === 'dup') duplicateStep(id);
+      if (a === 'up') moveWithin(id, -1);
+      if (a === 'down') moveWithin(id, 1);
+      closePop();
     });
-    setTimeout(() => document.addEventListener('mousedown', closeCtx, { once: true }), 0);
   }
-  function closeCtx() { const m = document.getElementById('ctxMenu'); if (m) m.remove(); }
-
-  /* ---------- vista ---------- */
-  function centerOn(node) {
-    if (!node) return;
-    const r = canvasEl.getBoundingClientRect();
-    state.view.scale = 1;
-    state.view.x = r.width / 2 - (node.x + 117);
-    state.view.y = r.height / 2 - (node.y + 40);
-    applyTransform();
+  function deleteStep(id) { const f = findStep(id); if (!f) return; f.arr.splice(f.index, 1); if (selected === id) selected = null; render(); cbs.onChange(); }
+  function duplicateStep(id) {
+    const f = findStep(id); if (!f) return;
+    const clone = JSON.parse(JSON.stringify(f.step)); reId(clone);
+    f.arr.splice(f.index + 1, 0, clone); render(); cbs.onChange();
   }
-  function fitView() {
-    if (!state.nodes.length) { state.view = { x: 60, y: 40, scale: 1 }; applyTransform(); return; }
-    const xs = state.nodes.map(n => n.x), ys = state.nodes.map(n => n.y);
-    const minX = Math.min(...xs), maxX = Math.max(...xs) + 234;
-    const minY = Math.min(...ys), maxY = Math.max(...ys) + 150;
-    const r = canvasEl.getBoundingClientRect();
-    const pad = 70;
-    const scale = Math.min(MAX_Z, Math.max(MIN_Z, Math.min((r.width - pad * 2) / (maxX - minX), (r.height - pad * 2) / (maxY - minY))));
-    state.view.scale = scale;
-    state.view.x = pad - minX * scale + (r.width - pad * 2 - (maxX - minX) * scale) / 2;
-    state.view.y = pad - minY * scale + (r.height - pad * 2 - (maxY - minY) * scale) / 2;
-    applyTransform();
-  }
-  function zoomBy(f) {
-    const r = canvasEl.getBoundingClientRect();
-    const mx = r.width / 2, my = r.height / 2, before = state.view.scale;
-    const scale = Math.min(MAX_Z, Math.max(MIN_Z, before * f));
-    state.view.x = mx - (mx - state.view.x) * (scale / before);
-    state.view.y = my - (my - state.view.y) * (scale / before);
-    state.view.scale = scale; applyTransform();
+  function reId(step) { step.id = newId(); if (step.branches) ['si', 'no'].forEach(b => (step.branches[b] || []).forEach(reId)); }
+  function moveWithin(id, dir) {
+    const f = findStep(id); if (!f) return; const ni = f.index + dir;
+    if (ni < 0 || ni >= f.arr.length) return;
+    f.arr.splice(f.index, 1); f.arr.splice(ni, 0, f.step); render(); cbs.onChange();
   }
 
-  /* ---------- carga / guardado ---------- */
-  function loadGraph(g) {
-    state.nodes = (g.nodes || []).map(n => ({ ...n, params: n.params || {} }));
-    state.connections = (g.connections || []).map(c => ({ ...c, id: c.id || 'c' + newId() }));
-    selectNode(null); render();
-    setTimeout(fitView, 30);
+  /* ---------- menú de agregar ---------- */
+  function openAddMenu(anchor, path) {
+    closePop();
+    const r = anchor.getBoundingClientRect();
+    const m = document.createElement('div'); m.className = 'addmenu';
+    m.style.left = Math.min(r.left, innerWidth - 280) + 'px'; m.style.top = Math.min(r.bottom + 4, innerHeight - 360) + 'px';
+    m.innerHTML = `<div class="addmenu__search">${icon('search')}<input placeholder="Buscar bloque…" autofocus></div><div class="addmenu__list"></div>`;
+    const list = m.querySelector('.addmenu__list');
+    const build = (f = '') => {
+      list.innerHTML = '';
+      CATS.forEach(cat => {
+        let items = blocksByCat(cat.key);
+        if (f) items = items.filter(b => (b.name + b.desc).toLowerCase().includes(f.toLowerCase()));
+        if (!items.length) return;
+        const h = document.createElement('div'); h.className = 'addmenu__cat'; h.innerHTML = `<span class="dot" style="background:${cat.color}"></span>${cat.name}`;
+        list.appendChild(h);
+        items.forEach(b => {
+          const it = document.createElement('button'); it.className = 'addmenu__item'; it.style.setProperty('--accent', cat.color);
+          it.innerHTML = `<span class="ai" style="background:${cat.color}">${icon(b.icon)}</span><span><b>${b.name}</b><i>${b.desc.slice(0, 52)}</i></span>`;
+          it.addEventListener('click', () => { addBlock(b.type, path); closePop(); });
+          list.appendChild(it);
+        });
+      });
+    };
+    build();
+    m.querySelector('input').addEventListener('input', e => build(e.target.value));
+    document.body.appendChild(m);
+    setTimeout(() => m.querySelector('input').focus(), 30);
   }
-  function getGraph() { return { nodes: state.nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y, params: n.params })), connections: state.connections }; }
-  function clearGraph() { state.nodes = []; state.connections = []; selectNode(null); render(); cbs.onChange(); }
-  function getState() { return state; }
+  function closePop() { document.querySelectorAll('.addmenu').forEach(x => x.remove()); }
+
+  function addBlock(type, path = 'root') {
+    const arr = stackByPath(path); if (!arr) return;
+    arr.push(makeStep(type)); render(); cbs.onChange();
+  }
+
+  /* ---------- Drag & Drop (reordenar / insertar) ---------- */
+  let drag = null;
+  function onDragStart(e) {
+    const card = e.target.closest('.sb, .sc');
+    if (!card) return;
+    if (e.target.closest('.ctrl, input, select, .sb__menu, button')) { e.preventDefault(); return; }
+    drag = { id: card.dataset.id };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/r8t-move', card.dataset.id);
+    setTimeout(() => card.classList.add('dragging'), 0);
+  }
+  function onDragEnd() { drag = null; flowEl.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging')); clearMarker(); }
+
+  function onDragOver(e) {
+    const stackEl = e.target.closest('.stack'); if (!stackEl) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    showMarker(stackEl, e.clientY);
+  }
+  function onDragLeave(e) { if (!e.relatedTarget || !flowEl.contains(e.relatedTarget)) clearMarker(); }
+
+  function onDrop(e) {
+    const stackEl = e.target.closest('.stack'); if (!stackEl) { clearMarker(); return; }
+    e.preventDefault();
+    const path = stackEl.dataset.stack;
+    const idx = markerIndex(stackEl, e.clientY);
+    clearMarker();
+    const newType = e.dataTransfer.getData('text/r8t-block');
+    const moveId = e.dataTransfer.getData('text/r8t-move') || (drag && drag.id);
+    const arr = stackByPath(path); if (!arr) return;
+    if (newType) { arr.splice(idx, 0, makeStep(newType)); render(); cbs.onChange(); return; }
+    if (moveId) {
+      // no soltar un contenedor dentro de sí mismo
+      const moved = findStep(moveId); if (!moved) return;
+      const ids = collectIds(moved.step);
+      const ownerId = path.split('.')[0];
+      if (path !== 'root' && ids.includes(ownerId)) { toast && toast('No podés meter un bloque dentro de sí mismo'); return; }
+      let insertIdx = idx;
+      if (moved.arr === arr && moved.index < idx) insertIdx--; // ajuste por remoción previa
+      moved.arr.splice(moved.index, 1);
+      arr.splice(insertIdx, 0, moved.step);
+      render(); cbs.onChange();
+    }
+  }
+
+  function showMarker(stackEl, y) {
+    clearMarker();
+    const idx = markerIndex(stackEl, y);
+    const marker = document.createElement('div'); marker.className = 'drop-marker';
+    const cards = [...stackEl.children].filter(c => c.classList.contains('sb') || c.classList.contains('sc'));
+    if (idx >= cards.length) stackEl.insertBefore(marker, stackEl.querySelector('.stack-add'));
+    else stackEl.insertBefore(marker, cards[idx]);
+  }
+  function markerIndex(stackEl, y) {
+    const cards = [...stackEl.children].filter(c => c.classList.contains('sb') || c.classList.contains('sc'));
+    for (let i = 0; i < cards.length; i++) { const r = cards[i].getBoundingClientRect(); if (y < r.top + r.height / 2) return i; }
+    return cards.length;
+  }
+  function clearMarker() { flowEl.querySelectorAll('.drop-marker').forEach(x => x.remove()); }
+
+  /* ---------- API ---------- */
+  function loadProgram(pg) { program = pg && pg.root ? pg : { target: { mode: 'product', id: 'p1' }, root: [] }; selected = null; render(); }
+  function getProgram() { return program; }
+  function setTarget(t) { program.target = t; render(); cbs.onChange(); }
+  function getTarget() { return program.target; }
   function refresh() { render(); }
+  function getState() { return { program, selected }; }
 
-  return { init, loadGraph, getGraph, clearGraph, addNodeCenter, addNodeAt, selectNode, updateNodeParams,
-           deleteNode, duplicateNode, fitView, zoomBy, getState, mergedParams, refresh, centerOn,
-           deleteSelected: () => state.selected && deleteNode(state.selected) };
+  return { init, loadProgram, getProgram, setTarget, getTarget, addBlock, zoomBy, setZoom, fitView, refresh, getState, findStep, mergedParams };
 })();

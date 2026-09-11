@@ -13,18 +13,29 @@ producto separado — por eso el diseño clona el de Real Trends.
 Inspirado en **Zentor, TheFoxie y MargenFull** (repricers de ML), pero mucho más
 personalizable y "ludificado" (gamificado).
 
-## Estado actual (Fase 1 — COMPLETA)
+## Estado actual (Fase 1 — COMPLETA, rework v2)
 
-✅ Editor de nodos vanilla JS: pan, zoom, arrastre, conexiones bezier, cuadrícula de fondo.
-✅ Paleta de bloques por categorías, drag & drop al lienzo.
-✅ ~25 bloques cubriendo todas las variables de una estrategia (ver `docs/BLOCKS.md`).
-✅ Inspector con edición de números (steppers, sliders, selects, toggles).
+> ⚠ El modelo cambió de **grafo de nodos (n8n)** a **programa apilable en árbol
+> (estilo Scratch/pilasbloques)**. Layout híbrido: el flujo va **vertical** y las
+> condiciones abren **ramas horizontales SÍ / SI NO** que contienen bloques adentro.
+
+✅ Editor apilable vanilla JS: flujo vertical, condicionales que **anidan** bloques,
+   arrastrar para reordenar/insertar, agregar por botón "＋", zoom (CSS `zoom`) y pan.
+✅ Edición de números **en línea, dentro de cada bloque** (steppers, selects, toggles).
+   Ya NO hay panel inspector aparte (`inspector.js` eliminado).
+✅ **Barra de explicación** arriba del editor: genera en lenguaje natural "Cuando pasa X,
+   hago Y…" a partir del árbol (`describeProgram` en `strategies.js` + `narrate` por bloque).
+✅ ~25 bloques cubriendo todas las variables (ver `docs/BLOCKS.md`).
 ✅ 6 estrategias pre-armadas (Crecimiento, Rentabilidad, Ganar BuyBox, Liquidación,
-   Equilibrado IA, Blindaje Fiscal).
-✅ Simulador de precio en vivo con productos de muestra (margen neto, ganancia, salud).
-✅ Gamificación: nivel/XP y "salud de la estrategia".
-✅ Creación de **bloques propios** desde el editor.
-✅ Guardado en `localStorage` + exportar JSON.
+   Equilibrado, Blindaje Fiscal).
+✅ **Aplicar a un producto o a un grupo** de productos (SAMPLE_PRODUCTS / SAMPLE_GROUPS).
+✅ Panel **Resultado** (serio, SIN gamificación): precio sugerido, margen neto, ganancia,
+   diagnóstico (Óptima/Aceptable/Poco competitivo/No rentable) y **proyección a 8 semanas**
+   con modelo de demanda (precio vs competidor → unidades).
+✅ Creación de **bloques propios** + guardado en `localStorage` + exportar JSON.
+
+> Sacado a propósito en v2: "salud %", XP y niveles (el usuario los pidió fuera; querían
+> algo serio pero claro).
 
 ## Lo que sigue (ver `docs/ROADMAP.md`)
 
@@ -48,35 +59,40 @@ ROADMAP); si se hace, conservar `blocks.js`/`strategies.js`/`simulate.js` casi t
 index.html            Shell de la app (documento completo standalone)
 r8t-app.html          Copia SIN <html>/<head>/<body> para publicar como Artifact de Claude.
                       ⚠ Mantener su <body> sincronizado con index.html (o consolidar).
+assets/
+  logo-realtrends.svg Logo REAL de Real Trends (usado en rail y topbar)
 styles/
   theme.css           Tokens de diseño Real Trends (colores, tipografía, botones)
-  app.css             Chrome de la app (rail, topbar, paleta, inspector, modales)
-  editor.css          Canvas: cuadrícula, nodos, puertos, conexiones, simulador
+  app.css             Chrome (rail, topbar, paleta, panel Resultado, presets, chat, modales)
+  editor.css          Canvas: cuadrícula, bloques apilables, contenedores condicionales, zoom
 js/
   icons.js            Set de íconos SVG inline → icon("nombre")
   blocks.js           ★ Registro de bloques + helpers de cálculo (variablePct, priceForMargin…)
-  strategies.js       Estrategias pre-armadas + productos de muestra (SAMPLE_PRODUCTS)
-  editor.js           ★ Motor del canvas (objeto RE): estado, render, pan/zoom, drag, conexiones
-  simulate.js         ★ Recorre el grafo y calcula precio/margen/salud
-  inspector.js        Panel derecho: UI de edición de parámetros del nodo
-  app.js              ★ Bootstrap: paleta, tabs, presets, simulador, guardado, gamificación, chat
+  strategies.js       Estrategias (árbol) + SAMPLE_PRODUCTS/SAMPLE_GROUPS + describeProgram()
+  editor.js           ★ Motor apilable (objeto RE): árbol, render, inline edit, drag, zoom/pan
+  simulate.js         ★ Recorre el árbol y calcula precio/margen + proyección a futuro
+  app.js              ★ Bootstrap: paleta, tabs, destino, explicación, resultado, guardado, chat
 docs/                 DESIGN.md · BLOCKS.md · ROADMAP.md
 ```
 
 Orden de carga de scripts (importa, hay dependencias globales): icons → blocks →
-strategies → editor → simulate → inspector → app.
+strategies → editor → simulate → app.
 
-### Conceptos clave
+### Conceptos clave (v2)
 
 - **Bloque (block type):** definición en `BLOCKS` (o `window.CUSTOM_BLOCKS`). Tiene
-  `cat`, `name`, `icon`, `inputs`, `outputs`, `params[]`, `summary(p,ctx)` y
-  `apply(ctx,p)` (o `branch(ctx,p)` para condiciones). Ver `docs/BLOCKS.md`.
-- **Nodo (node):** instancia de un bloque en el lienzo `{id, type, x, y, params}`.
-- **ctx (contexto de precio):** objeto que fluye por el grafo en la simulación; cada
-  bloque lo muta (precio, costos, impuestos, piso/techo, notas…). Definido en
-  `simulate.js → seedCtx()`.
-- **RE:** objeto del editor (`editor.js`). API: `RE.loadGraph`, `RE.getGraph`,
-  `RE.addNodeCenter`, `RE.updateNodeParams`, `RE.fitView`, `RE.getState`, etc.
+  `cat`, `name`, `icon`, `desc`, `params[]`, `narrate(p)` (frase en lenguaje natural) y
+  `apply(ctx,p)`. Los **contenedores** (ej. `condicion`) llevan `container:true` +
+  `branch(ctx,p)` que devuelve `'si'|'no'`. Ver `docs/BLOCKS.md`.
+- **Programa (árbol):** `{ target:{mode:'product'|'group', id}, root:[step,…] }`.
+  `step = { id, type, params, branches?:{si:[…], no:[…]} }`. Reemplaza al viejo grafo.
+- **ctx (contexto de precio):** objeto que se transforma al recorrer el árbol en orden;
+  cada bloque lo muta (precio, costos, impuestos, piso/techo, notas…). Ver `simulate.js`.
+- **RE:** objeto del editor (`editor.js`). API: `RE.loadProgram`, `RE.getProgram`,
+  `RE.addBlock(type,path)`, `RE.setTarget/getTarget`, `RE.zoomBy/fitView`,
+  `RE.mergedParams(step)`, `RE.getState`. Un `path` de pila es `'root'` o `'<stepId>.si'` / `'<stepId>.no'`.
+- **Destino:** producto individual o grupo. `resolveTarget()` (strategies.js) devuelve el
+  producto representativo + `scale` (nº de productos) para la proyección.
 
 ## Diseño = Real Trends (NO cambiar sin motivo)
 

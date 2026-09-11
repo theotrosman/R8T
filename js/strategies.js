@@ -1,133 +1,148 @@
 /* ============================================================
-   R8T · strategies.js
-   Estrategias pre-armadas + productos de muestra para simular.
+   R8T · strategies.js  (v2 — programas en árbol)
+   Estrategias pre-armadas + productos y grupos de muestra.
    ============================================================ */
 
-/* Productos de muestra (datos realistas de Mercado Libre AR) */
+/* Productos individuales de muestra (datos realistas de ML AR) */
 const SAMPLE_PRODUCTS = [
-  { id: 'p1', name: 'Auriculares Bluetooth',   cost: 8500,  price: 19999,  competitor: 18990,  stock: 45,  visits: 1200 },
-  { id: 'p2', name: 'Zapatillas Running',      cost: 32000, price: 74999,  competitor: 71990,  stock: 8,   visits: 640 },
-  { id: 'p3', name: 'Cafetera Express',        cost: 55000, price: 119999, competitor: 124990, stock: 120, visits: 300 },
-  { id: 'p4', name: 'Smartwatch Deportivo',    cost: 21000, price: 45999,  competitor: 43990,  stock: 3,   visits: 2100 },
-  { id: 'p5', name: 'Mochila Notebook 15.6"',  cost: 9800,  price: 24999,  competitor: 23500,  stock: 210, visits: 480 },
+  { id: 'p1', name: 'Auriculares Bluetooth',   cost: 8500,  price: 19999,  competitor: 18990,  stock: 45,  visits: 4800 },
+  { id: 'p2', name: 'Zapatillas Running',      cost: 32000, price: 74999,  competitor: 71990,  stock: 8,   visits: 2600 },
+  { id: 'p3', name: 'Cafetera Express',        cost: 55000, price: 119999, competitor: 124990, stock: 120, visits: 1200 },
+  { id: 'p4', name: 'Smartwatch Deportivo',    cost: 21000, price: 45999,  competitor: 43990,  stock: 3,   visits: 8400 },
+  { id: 'p5', name: 'Mochila Notebook 15.6"',  cost: 9800,  price: 24999,  competitor: 23500,  stock: 210, visits: 1900 },
 ];
 
-/* Helper: encadena bloques en línea horizontal y los conecta */
-function chain(prefix, steps, opts = {}) {
-  const startX = opts.x ?? 120, y = opts.y ?? 240, dx = opts.dx ?? 288;
-  const nodes = [], connections = [];
-  steps.forEach((s, i) => {
-    nodes.push({ id: `${prefix}${i}`, type: s.type, x: startX + i * dx, y, params: s.params || {} });
-    if (i > 0) connections.push({ id: `${prefix}e${i}`, from: { node: `${prefix}${i - 1}`, port: prevOut(steps[i - 1]) }, to: { node: `${prefix}${i}`, port: 'in' } });
-  });
-  return { nodes, connections };
-}
-function prevOut(step) { const b = BLOCKS[step.type]; return b.outputs && b.outputs[0] ? b.outputs[0].id : 'out'; }
+/* Grupos de productos (aplicar la estrategia a todo un conjunto) */
+const SAMPLE_GROUPS = [
+  { id: 'g1', name: 'Categoría: Electrónica', count: 128, rep: 'p1' },
+  { id: 'g2', name: 'Categoría: Indumentaria deportiva', count: 64, rep: 'p2' },
+  { id: 'g3', name: 'Categoría: Hogar y cocina', count: 210, rep: 'p3' },
+  { id: 'g4', name: 'Todas mis publicaciones', count: 412, rep: 'p1' },
+];
 
-/* Definición de las estrategias */
+function resolveTarget(target) {
+  if (target.mode === 'group') {
+    const g = SAMPLE_GROUPS.find(x => x.id === target.id) || SAMPLE_GROUPS[0];
+    const rep = SAMPLE_PRODUCTS.find(p => p.id === g.rep) || SAMPLE_PRODUCTS[0];
+    return { product: rep, scale: g.count, label: g.name, count: g.count, isGroup: true };
+  }
+  const p = SAMPLE_PRODUCTS.find(x => x.id === target.id) || SAMPLE_PRODUCTS[0];
+  return { product: p, scale: 1, label: p.name, count: 1, isGroup: false };
+}
+
+/* Builder de programas */
+function prog(prefix, root, target) {
+  let i = 0;
+  const walk = (arr) => arr.map(node => {
+    const st = { id: prefix + (i++), type: node.t, params: node.p || {} };
+    if (node.si || node.no) st.branches = { si: walk(node.si || []), no: walk(node.no || []) };
+    return st;
+  });
+  return { target: target || { mode: 'product', id: 'p1' }, root: walk(root) };
+}
+
 const STRATEGIES = [
   {
-    id: 'crecimiento', name: 'Crecimiento', icon: 'rocket', color: 'var(--cat-producto)',
+    id: 'crecimiento', name: 'Crecimiento', icon: 'rocket', color: 'var(--cat-margen)',
     tag: 'Agresiva', tagColor: '#16a34a',
-    desc: 'Margen bajo para maximizar ventas y visibilidad. Se posiciona por debajo del competidor sin perforar un piso de seguridad.',
-    meters: { Rentabilidad: 2, Agresividad: 5, Riesgo: 3 },
-    build: () => chain('cre', [
-      { type: 'producto' },
-      { type: 'comision_ml' },
-      { type: 'impuestos_generales' },
-      { type: 'piso_rentabilidad', params: { min: 6 } },
-      { type: 'igualar_competencia', params: { modo: 'debajo', offset: 100, respetarPiso: true } },
-      { type: 'redondeo', params: { modo: 'psy' } },
-      { type: 'fijar_precio', params: { frecuencia: '15' } },
+    desc: 'Margen bajo para vender más y ganar visibilidad, sin perforar un piso de seguridad.',
+    meters: { Rentabilidad: 2, Agresividad: 5, Velocidad: 4 },
+    build: () => prog('cre', [
+      { t: 'comision_ml' }, { t: 'impuestos_generales' },
+      { t: 'piso_rentabilidad', p: { min: 6 } },
+      { t: 'igualar_competencia', p: { modo: 'debajo', offset: 100, respetarPiso: true } },
+      { t: 'redondeo', p: { modo: 'psy' } }, { t: 'fijar_precio', p: { frecuencia: '15' } },
     ]),
   },
   {
-    id: 'rentabilidad', name: 'Rentabilidad máxima', icon: 'margen', color: 'var(--cat-margen)',
+    id: 'rentabilidad', name: 'Rentabilidad máxima', icon: 'margen', color: 'var(--cat-competencia)',
     tag: 'Conservadora', tagColor: '#0353c9',
-    desc: 'Protege el margen. Fija el precio para lograr una rentabilidad objetivo alta, con techo para no salirse de mercado.',
-    meters: { Rentabilidad: 5, Agresividad: 1, Riesgo: 1 },
-    build: () => chain('ren', [
-      { type: 'producto' },
-      { type: 'comision_ml' },
-      { type: 'impuestos_generales' },
-      { type: 'margen_objetivo', params: { target: 35, modo: 'fijar' } },
-      { type: 'techo_precio', params: { modo: 'margen', max: 55 } },
-      { type: 'redondeo', params: { modo: 'psy' } },
-      { type: 'fijar_precio', params: { frecuencia: '60' } },
+    desc: 'Protege el margen: fija el precio a una rentabilidad objetivo alta, con techo de mercado.',
+    meters: { Rentabilidad: 5, Agresividad: 1, Velocidad: 2 },
+    build: () => prog('ren', [
+      { t: 'comision_ml' }, { t: 'impuestos_generales' },
+      { t: 'margen_objetivo', p: { target: 35, modo: 'fijar' } },
+      { t: 'techo_precio', p: { modo: 'margen', max: 55 } },
+      { t: 'redondeo', p: { modo: 'psy' } }, { t: 'fijar_precio', p: { frecuencia: '60' } },
     ]),
   },
   {
     id: 'buybox', name: 'Ganar el BuyBox', icon: 'target', color: 'var(--cat-competencia)',
     tag: 'Competitiva', tagColor: '#0065F3',
-    desc: 'Disputa el catálogo quedando apenas por debajo del ganador, respetando siempre tu piso de rentabilidad.',
-    meters: { Rentabilidad: 3, Agresividad: 4, Riesgo: 2 },
-    build: () => chain('bbx', [
-      { type: 'producto' },
-      { type: 'comision_ml' },
-      { type: 'impuestos_generales' },
-      { type: 'piso_rentabilidad', params: { min: 10 } },
-      { type: 'ganar_buybox', params: { delta: 20, maxIntentos: 8 } },
-      { type: 'redondeo', params: { modo: 'psy' } },
-      { type: 'fijar_precio', params: { frecuencia: '15' } },
+    desc: 'Disputa el catálogo quedando apenas debajo del ganador, respetando tu piso.',
+    meters: { Rentabilidad: 3, Agresividad: 4, Velocidad: 5 },
+    build: () => prog('bbx', [
+      { t: 'comision_ml' }, { t: 'impuestos_generales' },
+      { t: 'piso_rentabilidad', p: { min: 10 } },
+      { t: 'ganar_buybox', p: { delta: 20, maxIntentos: 8 } },
+      { t: 'redondeo', p: { modo: 'psy' } }, { t: 'fijar_precio', p: { frecuencia: '15' } },
     ]),
   },
   {
     id: 'liquidacion', name: 'Liquidación de stock', icon: 'bolt', color: 'var(--cat-descuentos)',
     tag: 'Rotación', tagColor: '#ec4899',
-    desc: 'Rematá stock que no rota. Descuento fuerte hasta el punto de equilibrio, con redondeo atractivo.',
-    meters: { Rentabilidad: 1, Agresividad: 5, Riesgo: 4 },
-    build: () => chain('liq', [
-      { type: 'producto' },
-      { type: 'comision_ml' },
-      { type: 'impuestos_generales' },
-      { type: 'liquidacion', params: { descuento: 30, hastaMargen: 0 } },
-      { type: 'redondeo', params: { modo: 'd100' } },
-      { type: 'fijar_precio', params: { frecuencia: '30' } },
+    desc: 'Rematá stock que no rota con descuento fuerte hasta el punto de equilibrio.',
+    meters: { Rentabilidad: 1, Agresividad: 5, Velocidad: 5 },
+    build: () => prog('liq', [
+      { t: 'comision_ml' }, { t: 'impuestos_generales' },
+      { t: 'liquidacion', p: { descuento: 30, hastaMargen: 0 } },
+      { t: 'redondeo', p: { modo: 'd100' } }, { t: 'fijar_precio', p: { frecuencia: '30' } },
     ]),
   },
   {
-    id: 'equilibrado', name: 'Equilibrado (IA)', icon: 'sparkles', color: 'var(--cat-cuotas)',
-    tag: 'Inteligente', tagColor: '#6366f1',
-    desc: 'Balancea margen y competitividad. Si hay poco stock sube el precio; si hay stock, iguala al competidor. Todo con piso de seguridad.',
-    meters: { Rentabilidad: 4, Agresividad: 3, Riesgo: 2 },
-    build: () => {
-      // Cadena base + una bifurcación por condición de stock
-      const nodes = [], connections = [];
-      const base = [
-        { id: 'eq0', type: 'producto', x: 120, y: 260 },
-        { id: 'eq1', type: 'comision_ml', x: 408, y: 260 },
-        { id: 'eq2', type: 'impuestos_generales', x: 696, y: 260 },
-        { id: 'eq3', type: 'piso_rentabilidad', x: 984, y: 260, params: { min: 12 } },
-        { id: 'eq4', type: 'condicion', x: 1272, y: 260, params: { variable: 'stock', op: 'lt', valor: 15 } },
-        { id: 'eq5', type: 'regla_stock', x: 1560, y: 110, params: { bajoU: 15, bajoAjuste: 8, altoU: 200, altoAjuste: 4 } },
-        { id: 'eq6', type: 'igualar_competencia', x: 1560, y: 410, params: { modo: 'debajo', offset: 150, respetarPiso: true } },
-        { id: 'eq7', type: 'redondeo', x: 1848, y: 260, params: { modo: 'psy' } },
-        { id: 'eq8', type: 'fijar_precio', x: 2136, y: 260, params: { frecuencia: '30' } },
-      ];
-      nodes.push(...base.map(n => ({ ...n, params: n.params || {} })));
-      const c = (from, port, to) => connections.push({ id: 'eqe' + connections.length, from: { node: from, port }, to: { node: to, port: 'in' } });
-      c('eq0', 'out', 'eq1'); c('eq1', 'out', 'eq2'); c('eq2', 'out', 'eq3'); c('eq3', 'out', 'eq4');
-      c('eq4', 'si', 'eq5'); c('eq4', 'no', 'eq6');
-      c('eq5', 'out', 'eq7'); c('eq6', 'out', 'eq7'); c('eq7', 'out', 'eq8');
-      return { nodes, connections };
-    },
+    id: 'equilibrado', name: 'Equilibrado (inteligente)', icon: 'sparkles', color: 'var(--cat-cuotas)',
+    tag: 'Balanceada', tagColor: '#6366f1',
+    desc: 'Si hay poco stock sube el precio; si hay stock, iguala al competidor. Siempre con piso.',
+    meters: { Rentabilidad: 4, Agresividad: 3, Velocidad: 3 },
+    build: () => prog('eq', [
+      { t: 'comision_ml' }, { t: 'impuestos_generales' },
+      { t: 'piso_rentabilidad', p: { min: 12 } },
+      {
+        t: 'condicion', p: { variable: 'stock', op: 'lt', valor: 15 },
+        si: [{ t: 'regla_stock', p: { bajoU: 15, bajoAjuste: 8, altoU: 200, altoAjuste: 4 } }],
+        no: [{ t: 'igualar_competencia', p: { modo: 'debajo', offset: 150, respetarPiso: true } }],
+      },
+      { t: 'redondeo', p: { modo: 'psy' } }, { t: 'fijar_precio', p: { frecuencia: '30' } },
+    ]),
   },
   {
     id: 'blindaje_fiscal', name: 'Blindaje fiscal', icon: 'shield', color: 'var(--cat-impuestos)',
     tag: 'Anti-impuestos', tagColor: '#ef4444',
-    desc: 'Mantiene tu margen intacto ante cambios de impuestos. Fija rentabilidad objetivo y reajusta el precio automáticamente si suben IVA o IIBB.',
-    meters: { Rentabilidad: 4, Agresividad: 2, Riesgo: 1 },
-    build: () => chain('fis', [
-      { type: 'producto' },
-      { type: 'comision_ml' },
-      { type: 'impuestos_generales', params: { iva: 21, iibb: 3 } },
-      { type: 'margen_objetivo', params: { target: 28, modo: 'fijar' } },
-      { type: 'cambio_impuesto', params: { impuesto: 'iibb', variacion: 2, reajustar: true } },
-      { type: 'piso_rentabilidad', params: { min: 18 } },
-      { type: 'redondeo', params: { modo: 'psy' } },
-      { type: 'fijar_precio', params: { frecuencia: '60' } },
+    desc: 'Mantiene tu margen ante subas de impuestos: reajusta el precio automáticamente.',
+    meters: { Rentabilidad: 4, Agresividad: 2, Velocidad: 2 },
+    build: () => prog('fis', [
+      { t: 'comision_ml' }, { t: 'impuestos_generales', p: { iva: 21, iibb: 3 } },
+      { t: 'margen_objetivo', p: { target: 28, modo: 'fijar' } },
+      { t: 'cambio_impuesto', p: { impuesto: 'iibb', variacion: 2, reajustar: true } },
+      { t: 'piso_rentabilidad', p: { min: 18 } },
+      { t: 'redondeo', p: { modo: 'psy' } }, { t: 'fijar_precio', p: { frecuencia: '60' } },
     ]),
   },
 ];
-
 const STRAT_MAP = Object.fromEntries(STRATEGIES.map(s => [s.id, s]));
+
+/* ---------- Explicación en lenguaje natural del programa ---------- */
+function describeProgram(program) {
+  const steps = [];
+  const walk = (arr, prefix) => {
+    arr.forEach(step => {
+      const d = blockDef(step.type); if (!d) return;
+      const p = RE.mergedParams(step);
+      if (d.container && step.branches) {
+        const cond = d.condText ? d.condText(p) : (d.narrate ? d.narrate(p) : '');
+        const si = describeList(step.branches.si);
+        const no = describeList(step.branches.no);
+        let txt = `Cuando ${cond}, ${si || 'no hago nada'}`;
+        if (no) txt += `; si no, ${no}`;
+        txt += '.';
+        steps.push({ text: capitalize(txt), cond: true });
+      } else if (d.narrate) {
+        steps.push({ text: capitalize(d.narrate(p)) + '.', cond: false });
+      }
+    });
+  };
+  const describeList = (arr) => arr.map(s => { const d = blockDef(s.type); return d && d.narrate ? d.narrate(RE.mergedParams(s)) : ''; }).filter(Boolean).join(', y ');
+  walk(program.root || []);
+  return steps;
+}
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }

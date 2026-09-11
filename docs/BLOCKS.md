@@ -6,24 +6,31 @@ esta definición: **agregar un bloque = agregar una entrada acá**.
 
 ## Anatomía de un bloque
 
+> v2: el editor es un **árbol apilable** (no un grafo). Los bloques se renderizan como
+> tarjetas con controles en línea; ya no hay `inputs`/`outputs`/`summary`.
+
 ```js
 mi_bloque: {
   cat: 'margen',              // categoría (ver CATS): define color e ícono de sección
   name: 'Nombre visible',
   icon: 'margen',            // clave de icons.js
   desc: 'Qué hace, en una frase clara para el vendedor.',
-  inputs: 1,                 // 0 = bloque de inicio (trigger)
-  outputs: [{ id: 'out' }],  // salidas. Condición: [{id:'si',label:'SÍ',kind:'true'}, {id:'no',...,kind:'false'}]
-  terminal: false,           // true = fin del flujo (ej: fijar_precio)
   params: [
-    { key:'target', label:'Margen objetivo', type:'number', unit:'%',
+    { key:'target', label:'Margen', type:'number', unit:'%',
       value:25, min:0, max:90, step:1, slider:true, hint:'texto de ayuda' },
-    // type: 'number' | 'select' | 'toggle' | 'text'
+    // type: 'number' | 'select' | 'toggle'
     // select: options:[['valor','Etiqueta'], ...]
   ],
-  summary: (p, ctx) => [['Objetivo', p.target + '%']],  // filas que se ven en el nodo
+  narrate: (p) => `fijo el precio para dejar ${p.target}% de margen`, // frase para la barra de explicación
   apply: (ctx, p) => { /* muta ctx: precio, costos, impuestos, notas… */ },
-  // branch: (ctx,p) => 'si' | 'no'   // SOLO para bloques de condición (en vez de apply)
+}
+
+// Bloque CONTENEDOR (condición) que anida bloques adentro:
+mi_condicion: {
+  cat: 'logica', name: 'Cuando…', icon: 'logica', container: true,
+  params: [ /* variable, operador, valor… */ ],
+  condText: (p) => `el stock es menor a ${p.valor}`,   // usado por la barra de explicación
+  branch: (ctx, p) => (/* condición */) ? 'si' : 'no', // decide qué rama ejecutar
 }
 ```
 
@@ -53,7 +60,9 @@ Helpers disponibles (en `blocks.js`): `variablePct(ctx)`, `fixedCost(ctx)`,
 
 ## Catálogo de bloques (variables cubiertas)
 
-**Inicio** · `producto` — entrada del flujo (toma costo/precio/stock/competidor del producto).
+> El "inicio" ya no es un bloque: la cabecera del flujo es el **destino** (producto o
+> grupo) y desde ahí se apilan los bloques. La simulación siembra el `ctx` desde el
+> producto elegido (`simulate.js → seedCtx`).
 
 **Competencia** · `igualar_competencia` (igualar/debajo/encima + offset) · `ganar_buybox`
 (ganar por $X sin perforar piso).
