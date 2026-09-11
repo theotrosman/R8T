@@ -3,6 +3,18 @@
 > Backlog vivo. Ordenado por prioridad. Marcá con `[x]` lo que se vaya haciendo.
 > Contexto y arquitectura: ver [`../CLAUDE.md`](../CLAUDE.md). Fases grandes: [`ROADMAP.md`](ROADMAP.md).
 
+## ✅ Ya resuelto (verificado en vivo sobre Vercel)
+
+- Arrastre por puntero: arrastrar de la paleta y **soltar bloques dentro de las ramas** de un condicional.
+- **Undo / Redo** (Ctrl+Z / Ctrl+Y + botones en el lienzo) y **Supr** para borrar el bloque seleccionado.
+- **"Centrar"** ahora encuadra toda la estrategia (calcula el zoom).
+- Unidades **% ↔ $** conmutables en los controles.
+- Condicionales: variable "diferencia % con el competidor" + operadores ±, y bloques **Repetir mientras** / **Repetir varias veces**.
+- Aplicar a **grupo** = precio sugerido **por producto** (cada uno con su costo).
+- Impuestos de **importación/divisas**, bloque **Pausar publicación**, frecuencias ampliadas.
+- **Chatbot Groq** (`api/assistant.js`): charla + arma/edita la estrategia en el editor sobre el programa real (no acumula). Modelo con fallback (la cuenta no tenía `llama-3.3-70b-versatile`).
+- Cache-busting `?v=N` en assets para evitar JS viejo cacheado.
+
 ---
 
 ## 0. Verificar en vivo (URGENTE — nunca se pudo renderizar)
