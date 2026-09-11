@@ -52,15 +52,20 @@ Reglas:
 - Sé realista y conservador para Mercado Libre AR. Todo desde la óptica del vendedor.
 - No inventes tipos ni params que no estén en la lista.`;
 
+async function readBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  if (typeof req.body === 'string') { try { return JSON.parse(req.body || '{}'); } catch (e) { return {}; } }
+  return await new Promise((resolve) => { let d = ''; req.on('data', c => d += c); req.on('end', () => { try { resolve(JSON.parse(d || '{}')); } catch (e) { resolve({}); } }); req.on('error', () => resolve({})); });
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
-  const key = process.env.GROQ_API_KEY;
-  if (!key) { res.status(500).json({ error: 'Falta GROQ_API_KEY en el entorno.' }); return; }
+  // La env var puede estar como GROQ_API_KEY o groq_api_key (los nombres distinguen mayúsculas)
+  const key = process.env.GROQ_API_KEY || process.env.groq_api_key || process.env.Groq_Api_Key;
+  if (!key) { res.status(500).json({ error: 'Falta la API key de Groq en el entorno (GROQ_API_KEY o groq_api_key).' }); return; }
 
   try {
-    let body = req.body;
-    if (typeof body === 'string') body = JSON.parse(body || '{}');
-    body = body || {};
+    const body = await readBody(req);
     const userMsg = String(body.message || '').slice(0, 2000);
     const strategy = String(body.strategy || '').slice(0, 2000);
     const history = Array.isArray(body.history) ? body.history.slice(-8) : [];
