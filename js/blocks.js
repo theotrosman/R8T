@@ -352,7 +352,7 @@ const BLOCKS = {
 
   /* ===== CONDICIONES Y REGLAS ===== */
   condicion: {
-    cat: 'logica', name: 'Cuando… (condición SI/SINO)', icon: 'logica', container: true, headWord: 'Cuando',
+    cat: 'logica', name: 'Cuando… (condición)', icon: 'logica', container: true, headWord: 'Cuando',
     slots: [{ id: 'si', label: 'Entonces', tone: 'ok' }, { id: 'no', label: 'Si no', tone: 'muted' }],
     desc: 'Bifurca la estrategia: los bloques ADENTRO se ejecutan según se cumpla o no la condición. Ej: "cuando mi diferencia con el competidor difiere en más de ±15%".',
     params: [
@@ -366,7 +366,7 @@ const BLOCKS = {
     exec: (ctx, p, run) => { const r = condCmp(p.op, condValue(ctx, p.variable), +p.valor); note(ctx, 'info', `Condición "${condText(p)}" → ${r ? 'SÍ' : 'NO'}.`); run(r ? 'si' : 'no'); },
   },
   repetir_mientras: {
-    cat: 'logica', name: 'Repetir mientras… (while)', icon: 'logica', container: true, headWord: 'Mientras',
+    cat: 'logica', name: 'Repetir mientras se cumpla', icon: 'logica', container: true, headWord: 'Mientras',
     slots: [{ id: 'do', label: 'Repetir', tone: 'accent' }],
     desc: 'Repite los bloques de adentro MIENTRAS se cumpla la condición (con un tope de repeticiones por seguridad).',
     params: [
@@ -380,7 +380,7 @@ const BLOCKS = {
     exec: (ctx, p, run) => { let i = 0; const max = Math.min(+p.maxIter || 5, 50); while (condCmp(p.op, condValue(ctx, p.variable), +p.valor) && i < max) { run('do'); i++; } note(ctx, 'info', `"Mientras ${condText(p)}" corrió ${i} vez/veces.`); },
   },
   repetir_n: {
-    cat: 'logica', name: 'Repetir N veces (for)', icon: 'logica', container: true, headWord: 'Repetir',
+    cat: 'logica', name: 'Repetir varias veces', icon: 'logica', container: true, headWord: 'Repetir',
     slots: [{ id: 'do', label: 'Repetir', tone: 'accent' }],
     desc: 'Ejecuta los bloques de adentro una cantidad fija de veces.',
     params: [{ key: 'veces', label: '', type: 'number', unit: 'veces', value: 3, min: 1, max: 100, step: 1 }],
