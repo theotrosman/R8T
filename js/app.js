@@ -462,7 +462,16 @@ function init() {
   document.getElementById('zoomIn').addEventListener('click', () => RE.zoomBy(1.1));
   document.getElementById('zoomOut').addEventListener('click', () => RE.zoomBy(1 / 1.1));
   document.getElementById('fitView').addEventListener('click', () => RE.fitView());
-  window.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); toast('Guardado', 'ok'); } });
+  document.getElementById('undoBtn').addEventListener('click', () => RE.undo());
+  document.getElementById('redoBtn').addEventListener('click', () => RE.redo());
+  window.addEventListener('keydown', e => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(); toast('Guardado', 'ok'); }
+    else if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); RE.undo(); }
+    else if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); RE.redo(); }
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && !typing && RE.getState().selected) { e.preventDefault(); RE.deleteSelected(); }
+  });
 
   // cargar autosave si existe; si no, arrancar en un proyecto nuevo (vacío)
   let loaded = false;

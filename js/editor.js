@@ -74,7 +74,32 @@ const RE = (() => {
   function applyZoom() { flowEl.style.zoom = scale; const zl = document.getElementById('zoomLabel'); if (zl) zl.textContent = Math.round(scale * 100) + '%'; }
   function zoomBy(f) { scale = clamp(+(scale * f).toFixed(3), MINZ, MAXZ); applyZoom(); }
   function setZoom(z) { scale = clamp(z, MINZ, MAXZ); applyZoom(); }
-  function fitView() { setZoom(1); canvasEl.scrollTo({ top: 0, left: Math.max(0, (worldEl.scrollWidth - canvasEl.clientWidth) / 2), behavior: 'smooth' }); }
+  function fitView() {
+    flowEl.style.zoom = 1;                       // medir a escala natural
+    const fw = flowEl.offsetWidth || 480, fh = flowEl.offsetHeight || 480;
+    const cw = Math.max(220, canvasEl.clientWidth - 90), ch = Math.max(220, canvasEl.clientHeight - 90);
+    scale = clamp(Math.min(cw / fw, ch / fh), MINZ, 1);
+    applyZoom();
+    requestAnimationFrame(() => { canvasEl.scrollTop = 0; canvasEl.scrollLeft = Math.max(0, (worldEl.scrollWidth - canvasEl.clientWidth) / 2); });
+  }
+
+  /* ---------- historial (deshacer / rehacer) ---------- */
+  let hist = [], hidx = -1, snapT = null;
+  function resetHistory() { hist = [JSON.stringify(program)]; hidx = 0; }
+  function commitSnap() {
+    clearTimeout(snapT); snapT = null;
+    const s = JSON.stringify(program);
+    if (hidx >= 0 && hist[hidx] === s) return;
+    hist = hist.slice(0, hidx + 1); hist.push(s);
+    if (hist.length > 60) hist.shift();
+    hidx = hist.length - 1;
+  }
+  function pushSnap() { clearTimeout(snapT); snapT = setTimeout(commitSnap, 350); }
+  function changed() { pushSnap(); cbs.onChange(); }
+  function restore(s) { program = JSON.parse(s); selected = null; render(); cbs.onChange(); }
+  function undo() { commitSnap(); if (hidx <= 0) { window.toast && toast('Nada para deshacer'); return; } hidx--; restore(hist[hidx]); }
+  function redo() { if (hidx >= hist.length - 1) { window.toast && toast('Nada para rehacer'); return; } hidx++; restore(hist[hidx]); }
+  function deleteSelected() { if (selected) deleteStep(selected); }
 
   /* ---------- render ---------- */
   function render() {
@@ -171,17 +196,17 @@ const RE = (() => {
     if (!e.target.classList.contains('ctrl__in')) return;
     const f = stepOf(e.target); if (!f) return;
     let v = parseFloat(e.target.value); if (isNaN(v)) return;
-    f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = v; cbs.onChange();
+    f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = v; changed();
   }
   function onChangeCtrl(e) {
-    if (e.target.classList.contains('ctrl__u--sel')) { const f = stepOf(e.target); if (!f) return; f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.value; cbs.onChange(); return; }
-    if (e.target.classList.contains('ctrl--sel')) { const f = stepOf(e.target); if (!f) return; f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.value; render(); cbs.onChange(); }
-    else if (e.target.classList.contains('ctrl--tog')) { const f = stepOf(e.target); if (!f) return; f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.checked; render(); cbs.onChange(); }
-    else if (e.target.classList.contains('ctrl__in')) { const f = stepOf(e.target); if (!f) return; const d = blockDef(f.step.type); const pr = d.params.find(x => x.key === e.target.dataset.fk); let v = parseFloat(e.target.value); if (isNaN(v)) v = pr.value; if (pr.min !== undefined) v = Math.max(pr.min, v); if (pr.max !== undefined) v = Math.min(pr.max, v); e.target.value = v; f.step.params[e.target.dataset.fk] = v; cbs.onChange(); }
+    if (e.target.classList.contains('ctrl__u--sel')) { const f = stepOf(e.target); if (!f) return; f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.value; changed(); return; }
+    if (e.target.classList.contains('ctrl--sel')) { const f = stepOf(e.target); if (!f) return; f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.value; render(); changed(); }
+    else if (e.target.classList.contains('ctrl--tog')) { const f = stepOf(e.target); if (!f) return; f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.checked; render(); changed(); }
+    else if (e.target.classList.contains('ctrl__in')) { const f = stepOf(e.target); if (!f) return; const d = blockDef(f.step.type); const pr = d.params.find(x => x.key === e.target.dataset.fk); let v = parseFloat(e.target.value); if (isNaN(v)) v = pr.value; if (pr.min !== undefined) v = Math.max(pr.min, v); if (pr.max !== undefined) v = Math.min(pr.max, v); e.target.value = v; f.step.params[e.target.dataset.fk] = v; changed(); }
   }
   function onClick(e) {
     const step = e.target.closest('.ctrl__step');
-    if (step) { const wrap = step.closest('.ctrl--num'); const input = wrap.querySelector('.ctrl__in'); const f = stepOf(step); if (!f) return; const d = blockDef(f.step.type); const pr = d.params.find(x => x.key === step.dataset.fk); let v = (parseFloat(input.value) || 0) + (pr.step || 1) * parseInt(step.dataset.step, 10); if (pr.min !== undefined) v = Math.max(pr.min, v); if (pr.max !== undefined) v = Math.min(pr.max, v); v = Math.round(v * 100) / 100; input.value = v; f.step.params = f.step.params || {}; f.step.params[pr.key] = v; cbs.onChange(); return; }
+    if (step) { const wrap = step.closest('.ctrl--num'); const input = wrap.querySelector('.ctrl__in'); const f = stepOf(step); if (!f) return; const d = blockDef(f.step.type); const pr = d.params.find(x => x.key === step.dataset.fk); let v = (parseFloat(input.value) || 0) + (pr.step || 1) * parseInt(step.dataset.step, 10); if (pr.min !== undefined) v = Math.max(pr.min, v); if (pr.max !== undefined) v = Math.min(pr.max, v); v = Math.round(v * 100) / 100; input.value = v; f.step.params = f.step.params || {}; f.step.params[pr.key] = v; changed(); return; }
     const mv = e.target.closest('[data-move]');
     if (mv) { e.stopPropagation(); const host = mv.closest('[data-id]'); if (host) moveWithin(host.dataset.id, mv.dataset.move === 'up' ? -1 : 1); return; }
     const menu = e.target.closest('[data-menu]');
@@ -203,9 +228,9 @@ const RE = (() => {
     m.querySelector('[data-a="up"] svg').style.transform = 'rotate(180deg)';
     m.addEventListener('click', ev => { const a = ev.target.closest('button')?.dataset.a; if (a === 'del') deleteStep(id); if (a === 'dup') duplicateStep(id); if (a === 'up') moveWithin(id, -1); if (a === 'down') moveWithin(id, 1); closePop(); });
   }
-  function deleteStep(id) { const f = findStep(id); if (!f) return; f.arr.splice(f.index, 1); if (selected === id) selected = null; render(); cbs.onChange(); }
-  function duplicateStep(id) { const f = findStep(id); if (!f) return; const clone = JSON.parse(JSON.stringify(f.step)); reId(clone); f.arr.splice(f.index + 1, 0, clone); render(); cbs.onChange(); }
-  function moveWithin(id, dir) { const f = findStep(id); if (!f) return; const ni = f.index + dir; if (ni < 0 || ni >= f.arr.length) return; f.arr.splice(f.index, 1); f.arr.splice(ni, 0, f.step); render(); cbs.onChange(); }
+  function deleteStep(id) { const f = findStep(id); if (!f) return; f.arr.splice(f.index, 1); if (selected === id) selected = null; render(); changed(); }
+  function duplicateStep(id) { const f = findStep(id); if (!f) return; const clone = JSON.parse(JSON.stringify(f.step)); reId(clone); f.arr.splice(f.index + 1, 0, clone); render(); changed(); }
+  function moveWithin(id, dir) { const f = findStep(id); if (!f) return; const ni = f.index + dir; if (ni < 0 || ni >= f.arr.length) return; f.arr.splice(f.index, 1); f.arr.splice(ni, 0, f.step); render(); changed(); }
 
   function openAddMenu(anchor, path) {
     closePop();
@@ -230,7 +255,7 @@ const RE = (() => {
     setTimeout(() => m.querySelector('input').focus(), 30);
   }
   function closePop() { document.querySelectorAll('.addmenu').forEach(x => x.remove()); }
-  function addBlock(type, path = 'root') { const arr = stackByPath(path); if (!arr) return; arr.push(makeStep(type)); render(); cbs.onChange(); }
+  function addBlock(type, path = 'root') { const arr = stackByPath(path); if (!arr) return; arr.push(makeStep(type)); render(); changed(); }
 
   /* ---------- Arrastre por puntero (confiable) ---------- */
   let drag = null;
@@ -266,13 +291,13 @@ const RE = (() => {
     if (stackEl && drag) {
       const path = stackEl.dataset.stack; const idx = markerIndex(stackEl, e.clientY); const arr = stackByPath(path);
       if (arr) {
-        if (drag.newType) { arr.splice(idx, 0, makeStep(drag.newType)); render(); cbs.onChange(); }
+        if (drag.newType) { arr.splice(idx, 0, makeStep(drag.newType)); render(); changed(); }
         else if (drag.moveId) {
           const moved = findStep(drag.moveId);
           if (moved) {
             const ids = collectIds(moved.step); const owner = path.split('.')[0];
             if (path !== 'root' && ids.includes(owner)) { window.toast && toast('No podés meter un bloque dentro de sí mismo'); }
-            else { let ii = idx; if (moved.arr === arr && moved.index < idx) ii--; moved.arr.splice(moved.index, 1); arr.splice(ii, 0, moved.step); render(); cbs.onChange(); }
+            else { let ii = idx; if (moved.arr === arr && moved.index < idx) ii--; moved.arr.splice(moved.index, 1); arr.splice(ii, 0, moved.step); render(); changed(); }
           }
         }
       }
@@ -291,13 +316,13 @@ const RE = (() => {
   function clearMarker() { flowEl.querySelectorAll('.drop-marker').forEach(x => x.remove()); }
 
   /* ---------- API ---------- */
-  function loadProgram(pg) { program = pg && pg.root ? pg : { target: { mode: 'product', id: 'p1' }, root: [] }; selected = null; render(); }
+  function loadProgram(pg) { program = pg && pg.root ? pg : { target: { mode: 'product', id: 'p1' }, root: [] }; selected = null; render(); resetHistory(); }
   function getProgram() { return program; }
-  function setTarget(t) { program.target = t; render(); cbs.onChange(); }
+  function setTarget(t) { program.target = t; render(); changed(); }
   function getTarget() { return program.target; }
   function refresh() { render(); }
   function getState() { return { program, selected }; }
-  function insertBlocks(steps, path = 'root') { const arr = stackByPath(path); if (!arr) return; steps.forEach(s => { reId(s); arr.push(s); }); render(); cbs.onChange(); }
+  function insertBlocks(steps, path = 'root') { const arr = stackByPath(path); if (!arr) return; steps.forEach(s => { reId(s); arr.push(s); }); render(); changed(); }
 
-  return { init, loadProgram, getProgram, setTarget, getTarget, addBlock, insertBlocks, startNewBlockDrag, zoomBy, setZoom, fitView, refresh, getState, findStep, mergedParams };
+  return { init, loadProgram, getProgram, setTarget, getTarget, addBlock, insertBlocks, startNewBlockDrag, zoomBy, setZoom, fitView, refresh, getState, findStep, mergedParams, undo, redo, deleteSelected };
 })();

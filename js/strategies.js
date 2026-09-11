@@ -138,7 +138,12 @@ function describeProgram(program) {
       }
     });
   };
-  const describeList = (arr) => arr.map(s => { const d = blockDef(s.type); return d && d.narrate ? d.narrate(RE.mergedParams(s)) : ''; }).filter(Boolean).join(', y ');
+  const describeList = (arr) => arr.map(s => {
+    const d = blockDef(s.type); if (!d) return '';
+    const p = RE.mergedParams(s);
+    if (d.container && d.narrateContainer) return d.narrateContainer(p, (slot) => describeList((s.branches && s.branches[slot]) || []));
+    return d.narrate ? d.narrate(p) : '';
+  }).filter(Boolean).join(', y ');
   walk(program.root || []);
   return steps;
 }
