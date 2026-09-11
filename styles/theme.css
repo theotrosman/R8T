@@ -1,0 +1,131 @@
+/* ============================================================
+   R8T · theme.css
+   Tokens de diseño clonados de Real Trends (real-trends.com)
+   Colores extraídos del sitio real:
+     azul  #0065F3  ·  teal #71D8BF  ·  navy #171E43
+     tinta #292828  ·  gris #585757  ·  lima #CBF44F
+   Fuente original: Proxima Nova → fallback libre: Mulish
+   ============================================================ */
+
+:root {
+  /* --- Marca Real Trends --- */
+  --rt-blue:        #0065F3;
+  --rt-blue-hover:  #0353c9;
+  --rt-blue-050:    #EDF3FC;
+  --rt-blue-100:    #E0EAF8;
+  --rt-teal:        #71D8BF;
+  --rt-teal-600:    #45c6a6;
+  --rt-teal-050:    #e9faf5;
+  --rt-navy:        #171E43;
+  --rt-navy-700:    #202a5c;
+  --rt-lime:        #CBF44F;
+
+  /* --- Neutrales --- */
+  --rt-ink:         #292828;  /* títulos */
+  --rt-gray:        #585757;  /* texto */
+  --rt-gray-400:    #909090;
+  --rt-gray-300:    #b7bcc7;
+  --rt-line:        #e6e9f0;  /* bordes */
+  --rt-line-soft:   #eef1f6;
+  --rt-bg:          #f4f6fb;  /* fondo app (levemente azulado) */
+  --rt-surface:     #ffffff;
+  --rt-surface-2:   #f9fbfe;
+
+  /* --- Semánticos --- */
+  --ok:      #16a34a;
+  --ok-050:  #e9f7ee;
+  --warn:    #f59e0b;
+  --warn-050:#fef3e2;
+  --danger:  #ef4444;
+  --danger-050:#fdeaea;
+
+  /* --- Acentos por categoría de bloque (look "ludificado") --- */
+  --cat-producto:    #71D8BF;
+  --cat-competencia: #0065F3;
+  --cat-margen:      #16a34a;
+  --cat-costos:      #64748b;
+  --cat-impuestos:   #ef4444;   /* impuestos resaltan (foco del usuario) */
+  --cat-promos:      #8b5cf6;
+  --cat-descuentos:  #ec4899;
+  --cat-envios:      #06b6d4;
+  --cat-cuotas:      #6366f1;
+  --cat-devoluciones:#f59e0b;
+  --cat-logica:      #475569;
+  --cat-accion:      #0065F3;
+
+  /* --- Radios / sombras --- */
+  --r-pill:  36px;
+  --r-card:  14px;
+  --r-node:  13px;
+  --r-sm:    9px;
+  --shadow-sm: 0 1px 2px rgba(23,30,67,.06), 0 1px 3px rgba(23,30,67,.05);
+  --shadow-md: 0 4px 14px rgba(23,30,67,.08), 0 2px 6px rgba(23,30,67,.05);
+  --shadow-lg: 0 18px 45px rgba(23,30,67,.16), 0 6px 16px rgba(23,30,67,.08);
+  --shadow-node: 0 2px 6px rgba(23,30,67,.08), 0 8px 22px rgba(23,30,67,.08);
+
+  /* --- Tipografía --- */
+  --font: "Mulish", "Proxima Nova", "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --z-panel: 20;
+  --z-modal: 100;
+  --z-toast: 200;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--rt-ink);
+  background: var(--rt-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+h1,h2,h3,h4 { margin: 0; color: var(--rt-ink); font-weight: 800; letter-spacing: -.01em; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+::selection { background: var(--rt-blue-100); }
+
+/* Scrollbars finos estilo RT */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #d5dbe6; border-radius: 20px; border: 3px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: #b9c1d1; background-clip: content-box; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- Botones ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid transparent; border-radius: var(--r-pill);
+  padding: 9px 18px; font-size: 14px; font-weight: 700; line-height: 1;
+  background: var(--rt-surface); color: var(--rt-ink);
+  transition: transform .08s ease, background .15s ease, box-shadow .15s ease, border-color .15s;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+.btn svg { width: 16px; height: 16px; }
+.btn--primary { background: var(--rt-blue); color: #fff; border-color: var(--rt-blue); box-shadow: 0 6px 16px rgba(0,101,243,.24); }
+.btn--primary:hover { background: var(--rt-blue-hover); }
+.btn--ghost { background: transparent; border-color: var(--rt-line); color: var(--rt-gray); }
+.btn--ghost:hover { background: var(--rt-surface); border-color: var(--rt-blue); color: var(--rt-blue); }
+.btn--teal { background: var(--rt-teal); color: #08312a; border-color: var(--rt-teal); box-shadow: 0 6px 16px rgba(113,216,191,.35); }
+.btn--teal:hover { background: var(--rt-teal-600); }
+.btn--soft { background: var(--rt-blue-050); color: var(--rt-blue); }
+.btn--soft:hover { background: var(--rt-blue-100); }
+.btn--sm { padding: 6px 12px; font-size: 12.5px; }
+.btn--icon { padding: 8px; border-radius: 10px; }
+.btn[disabled] { opacity: .5; pointer-events: none; }
+
+/* ---------- Chips / badges ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: var(--r-pill);
+  font-size: 12px; font-weight: 700; background: var(--rt-blue-050); color: var(--rt-blue);
+}
+.chip--teal { background: var(--rt-teal-050); color: var(--rt-teal-600); }
+.chip--lime { background: #f4fbd6; color: #5b7a00; }
+.chip--gray { background: #f0f2f7; color: var(--rt-gray); }
+
+/* Utilidad */
+.muted { color: var(--rt-gray-400); }
+.hidden { display: none !important; }

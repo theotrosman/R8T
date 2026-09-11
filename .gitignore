@@ -1,0 +1,19 @@
+# Dependencias (si en el futuro se migra a Node/Vite)
+node_modules/
+dist/
+.cache/
+
+# Entorno / secretos (API keys de Groq, ML, etc. — NUNCA commitear)
+.env
+.env.*
+*.local
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
