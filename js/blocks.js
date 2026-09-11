@@ -52,14 +52,15 @@ const CATS = [
 const CAT_MAP = Object.fromEntries(CATS.map(c => [c.key, c]));
 
 /* Variables y operadores para condiciones */
-const VAR_LABEL = { stock: 'el stock', competitor: 'el precio del competidor', margen: 'mi margen actual', precio: 'mi precio', visitas: 'las visitas', costo: 'mi costo', competidores: 'la cantidad de competidores', dias_sin_venta: 'los días sin vender', ventas_semana: 'las ventas de la semana' };
-const VAR_OPTS = [['stock', 'el stock'], ['competitor', 'el precio del competidor'], ['margen', 'mi margen actual'], ['precio', 'mi precio'], ['costo', 'mi costo'], ['visitas', 'las visitas'], ['competidores', 'cantidad de competidores'], ['dias_sin_venta', 'días sin vender'], ['ventas_semana', 'ventas de la semana']];
-const OP_LABEL = { lt: 'es menor a', lte: 'es menor o igual a', gt: 'es mayor a', gte: 'es mayor o igual a', eq: 'es igual a', neq: 'es distinto de' };
-const OP_OPTS = [['lt', 'es menor a'], ['lte', 'es menor o igual a'], ['gt', 'es mayor a'], ['gte', 'es mayor o igual a'], ['eq', 'es igual a'], ['neq', 'es distinto de']];
+const VAR_LABEL = { stock: 'el stock', competitor: 'el precio del competidor', dif_competidor: 'mi diferencia % con el competidor', margen: 'mi margen actual', precio: 'mi precio', visitas: 'las visitas', costo: 'mi costo', competidores: 'la cantidad de competidores', dias_sin_venta: 'los días sin vender', ventas_semana: 'las ventas de la semana' };
+const VAR_OPTS = [['dif_competidor', 'mi diferencia % con el competidor'], ['competitor', 'el precio del competidor'], ['margen', 'mi margen actual'], ['precio', 'mi precio'], ['costo', 'mi costo'], ['stock', 'el stock'], ['visitas', 'las visitas'], ['competidores', 'cantidad de competidores'], ['dias_sin_venta', 'días sin vender'], ['ventas_semana', 'ventas de la semana']];
+const OP_LABEL = { lt: 'es menor a', lte: 'es menor o igual a', gt: 'es mayor a', gte: 'es mayor o igual a', eq: 'es igual a', neq: 'es distinto de', absgt: 'difiere en más de (±)', abslt: 'está dentro de (±)' };
+const OP_OPTS = [['gt', 'es mayor a'], ['lt', 'es menor a'], ['gte', 'es mayor o igual a'], ['lte', 'es menor o igual a'], ['eq', 'es igual a'], ['neq', 'es distinto de'], ['absgt', 'difiere en más de (±)'], ['abslt', 'está dentro de (±)']];
 function condValue(ctx, v) {
   switch (v) {
     case 'stock': return ctx.stock || 0;
     case 'competitor': return ctx.competitor || 0;
+    case 'dif_competidor': return ctx.competitor ? ((ctx.price - ctx.competitor) / ctx.competitor) * 100 : 0;
     case 'margen': return marginAt(ctx, ctx.price);
     case 'precio': return ctx.price;
     case 'costo': return ctx.cost || 0;
@@ -71,9 +72,14 @@ function condValue(ctx, v) {
   return 0;
 }
 function condCmp(op, a, b) {
-  switch (op) { case 'lt': return a < b; case 'lte': return a <= b; case 'gt': return a > b; case 'gte': return a >= b; case 'eq': return Math.abs(a - b) < 0.5; case 'neq': return Math.abs(a - b) >= 0.5; }
+  switch (op) {
+    case 'lt': return a < b; case 'lte': return a <= b; case 'gt': return a > b; case 'gte': return a >= b;
+    case 'eq': return Math.abs(a - b) < 0.5; case 'neq': return Math.abs(a - b) >= 0.5;
+    case 'absgt': return Math.abs(a) > b; case 'abslt': return Math.abs(a) <= b;
+  }
   return false;
 }
+function condText(p) { return `${VAR_LABEL[p.variable] || p.variable} ${OP_LABEL[p.op] || p.op} ${p.valor}${p.variable === 'dif_competidor' ? '%' : ''}`; }
 
 /* ---------- Bloques ---------- */
 const BLOCKS = {
@@ -346,20 +352,41 @@ const BLOCKS = {
 
   /* ===== CONDICIONES Y REGLAS ===== */
   condicion: {
-    cat: 'logica', name: 'Cuando… (condición)', icon: 'logica', container: true,
-    desc: 'Bifurca la estrategia: los bloques que pongas ADENTRO se ejecutan según se cumpla o no la condición.',
+    cat: 'logica', name: 'Cuando… (condición SI/SINO)', icon: 'logica', container: true, headWord: 'Cuando',
+    slots: [{ id: 'si', label: 'Entonces', tone: 'ok' }, { id: 'no', label: 'Si no', tone: 'muted' }],
+    desc: 'Bifurca la estrategia: los bloques ADENTRO se ejecutan según se cumpla o no la condición. Ej: "cuando mi diferencia con el competidor difiere en más de ±15%".',
     params: [
-      { key: 'variable', label: '', type: 'select', value: 'stock', options: VAR_OPTS },
-      { key: 'op', label: '', type: 'select', value: 'lt', options: OP_OPTS },
+      { key: 'variable', label: '', type: 'select', value: 'dif_competidor', options: VAR_OPTS },
+      { key: 'op', label: '', type: 'select', value: 'absgt', options: OP_OPTS },
       { key: 'valor', label: '', type: 'number', unit: '', value: 15, min: -100000, max: 100000000, step: 1 },
     ],
-    condText: (p) => `${VAR_LABEL[p.variable] || p.variable} ${OP_LABEL[p.op] || p.op} ${p.valor}`,
-    narrate: (p) => `cuando ${BLOCKS.condicion.condText(p)}`,
-    branch: (ctx, p) => {
-      const res = condCmp(p.op, condValue(ctx, p.variable), +p.valor);
-      note(ctx, 'info', `Condición "${BLOCKS.condicion.condText(p)}" → ${res ? 'SÍ' : 'NO'}.`);
-      return res ? 'si' : 'no';
-    },
+    condText: (p) => condText(p),
+    narrate: (p) => `cuando ${condText(p)}`,
+    narrateContainer: (p, ds) => { const si = ds('si'), no = ds('no'); let t = `cuando ${condText(p)}, ${si || 'no hago nada'}`; if (no) t += `; si no, ${no}`; return t; },
+    exec: (ctx, p, run) => { const r = condCmp(p.op, condValue(ctx, p.variable), +p.valor); note(ctx, 'info', `Condición "${condText(p)}" → ${r ? 'SÍ' : 'NO'}.`); run(r ? 'si' : 'no'); },
+  },
+  repetir_mientras: {
+    cat: 'logica', name: 'Repetir mientras… (while)', icon: 'logica', container: true, headWord: 'Mientras',
+    slots: [{ id: 'do', label: 'Repetir', tone: 'accent' }],
+    desc: 'Repite los bloques de adentro MIENTRAS se cumpla la condición (con un tope de repeticiones por seguridad).',
+    params: [
+      { key: 'variable', label: '', type: 'select', value: 'margen', options: VAR_OPTS },
+      { key: 'op', label: '', type: 'select', value: 'gt', options: OP_OPTS },
+      { key: 'valor', label: '', type: 'number', unit: '', value: 40, min: -100000, max: 100000000, step: 1 },
+      { key: 'maxIter', label: 'máx.', type: 'number', unit: 'x', value: 5, min: 1, max: 50, step: 1 },
+    ],
+    narrate: (p) => `mientras ${condText(p)}`,
+    narrateContainer: (p, ds) => `mientras ${condText(p)}, repito: ${ds('do') || '(vacío)'}`,
+    exec: (ctx, p, run) => { let i = 0; const max = Math.min(+p.maxIter || 5, 50); while (condCmp(p.op, condValue(ctx, p.variable), +p.valor) && i < max) { run('do'); i++; } note(ctx, 'info', `"Mientras ${condText(p)}" corrió ${i} vez/veces.`); },
+  },
+  repetir_n: {
+    cat: 'logica', name: 'Repetir N veces (for)', icon: 'logica', container: true, headWord: 'Repetir',
+    slots: [{ id: 'do', label: 'Repetir', tone: 'accent' }],
+    desc: 'Ejecuta los bloques de adentro una cantidad fija de veces.',
+    params: [{ key: 'veces', label: '', type: 'number', unit: 'veces', value: 3, min: 1, max: 100, step: 1 }],
+    narrate: (p) => `repito ${p.veces} veces`,
+    narrateContainer: (p, ds) => `repito ${p.veces} veces: ${ds('do') || '(vacío)'}`,
+    exec: (ctx, p, run) => { const n = Math.min(+p.veces || 1, 100); for (let i = 0; i < n; i++) run('do'); },
   },
   regla_stock: {
     cat: 'logica', name: 'Ajustar precio por stock', icon: 'stock',

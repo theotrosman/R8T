@@ -39,10 +39,12 @@ personalizable y "ludificado" (gamificado).
 
 ## Lo que sigue (ver `docs/ROADMAP.md`)
 
-- **Fase 2 — Chatbot IA (Groq):** panel derecho "Asistente IA" ya maquetado en
-  `js/app.js → initChat()`. Falta conectar la **API de Groq** (Llama 3.3 70B) para que
-  edite el grafo con lenguaje natural. La API key NO debe ir hardcodeada en el front:
-  usar un backend/proxy. Ver ROADMAP para el contrato de función sugerido.
+- **Fase 2 — Chatbot IA (Groq): IMPLEMENTADA (v1).** `api/assistant.js` (serverless de
+  Vercel) llama a Groq (Llama 3.3 70B) con la `GROQ_API_KEY` del entorno y devuelve
+  `{reply, name, program}`. El front (`initChat` en `app.js`) sanitiza el `program` con
+  `sanitizeProgram()` y lo carga en el editor con `RE.loadProgram` → **arma la estrategia
+  directamente**. Si no hay backend (ej. en el Artifact de Claude), cae a una sugerencia
+  local. Pendiente: acciones incrementales (editar bloque puntual), streaming, memoria.
 - **Fase 3 — Backend real:** persistencia por usuario, conexión a la API de Mercado
   Libre (precios, comisiones por categoría, buybox, stock reales), ejecución programada
   del repricer.
@@ -72,7 +74,12 @@ js/
   editor.js           ★ Motor apilable (objeto RE): árbol, render, inline edit, drag, zoom/pan
   simulate.js         ★ Recorre el árbol y calcula precio/margen + proyección a futuro
   app.js              ★ Bootstrap: paleta, tabs, destino, explicación, resultado, guardado, chat
-docs/                 DESIGN.md · BLOCKS.md · ROADMAP.md
+api/
+  assistant.js        Función serverless (Vercel) → proxy a Groq. Devuelve {reply, name, program}
+                      y el front construye esa estrategia en el editor. Requiere env GROQ_API_KEY.
+                      ⚠ Tiene su propio catálogo de bloques embebido: si agregás/cambiás bloques
+                      en blocks.js, actualizá el prompt de assistant.js.
+docs/                 DESIGN.md · BLOCKS.md · ROADMAP.md · MEJORAS.md
 ```
 
 Orden de carga de scripts (importa, hay dependencias globales): icons → blocks →

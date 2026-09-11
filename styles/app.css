@@ -154,6 +154,8 @@
 .preset__bars { display: flex; gap: 2px; }
 .preset__bars i { width: 6px; height: 11px; border-radius: 2px; background: var(--rt-line); }
 .preset__bars i.on { background: var(--accent); }
+.preset__actions { display: flex; gap: 8px; margin-top: 12px; }
+.preset__actions .btn { flex: 1; justify-content: center; }
 
 /* ---------------- Asistente (chat) ---------------- */
 .chat { display: flex; flex-direction: column; height: 100%; min-height: 0; }

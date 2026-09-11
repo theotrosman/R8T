@@ -17,13 +17,12 @@ function seedCtx(product) {
 }
 
 function execStack(stack, ctx, depth) {
-  if (depth > 40) return;
+  if (depth > 60) return;
   for (const step of stack) {
     const d = blockDef(step.type); if (!d) continue;
     const p = RE.mergedParams(step);
-    if (d.branch) {
-      const port = d.branch(ctx, p);
-      if (step.branches) execStack(step.branches[port] || [], ctx, depth + 1);
+    if (d.container && d.exec) {
+      d.exec(ctx, p, (slot) => execStack((step.branches && step.branches[slot]) || [], ctx, depth + 1));
     } else if (d.apply) {
       d.apply(ctx, p);
     }

@@ -94,11 +94,15 @@
 .sc { max-width: 860px; }
 .sc__branches { display: flex; gap: 0; border-top: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--rt-line)); }
 .sc__branch { flex: 1; min-width: 276px; padding: 12px; }
-.sc__branch--si { border-right: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--rt-line)); }
+.sc__branch + .sc__branch { border-left: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--rt-line)); }
 .sc__label { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
 .sc__label svg { width: 13px; height: 13px; }
-.sc__label--si { color: var(--ok); }
-.sc__label--no { color: var(--rt-gray-400); }
+.sc__label--ok { color: var(--ok); }
+.sc__label--muted { color: var(--rt-gray-400); }
+.sc__label--accent { color: var(--accent); }
+
+/* Fantasma de arrastre */
+.drag-ghost { position: fixed; z-index: 9999; pointer-events: none; background: var(--rt-navy); color: #fff; font-size: 12px; font-weight: 800; padding: 7px 12px; border-radius: 9px; box-shadow: var(--shadow-lg); opacity: .95; }
 .sc .stack { width: auto; }
 .sc .sb { border-radius: 10px; }
 

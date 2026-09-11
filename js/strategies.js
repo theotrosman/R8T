@@ -36,7 +36,8 @@ function prog(prefix, root, target) {
   let i = 0;
   const walk = (arr) => arr.map(node => {
     const st = { id: prefix + (i++), type: node.t, params: node.p || {} };
-    if (node.si || node.no) st.branches = { si: walk(node.si || []), no: walk(node.no || []) };
+    const slots = {}; ['si', 'no', 'do'].forEach(k => { if (node[k]) slots[k] = walk(node[k]); });
+    if (Object.keys(slots).length) st.branches = slots;
     return st;
   });
   return { target: target || { mode: 'product', id: 'p1' }, root: walk(root) };
@@ -125,18 +126,13 @@ const STRAT_MAP = Object.fromEntries(STRATEGIES.map(s => [s.id, s]));
 /* ---------- Explicación en lenguaje natural del programa ---------- */
 function describeProgram(program) {
   const steps = [];
-  const walk = (arr, prefix) => {
+  const walk = (arr) => {
     arr.forEach(step => {
       const d = blockDef(step.type); if (!d) return;
       const p = RE.mergedParams(step);
-      if (d.container && step.branches) {
-        const cond = d.condText ? d.condText(p) : (d.narrate ? d.narrate(p) : '');
-        const si = describeList(step.branches.si);
-        const no = describeList(step.branches.no);
-        let txt = `Cuando ${cond}, ${si || 'no hago nada'}`;
-        if (no) txt += `; si no, ${no}`;
-        txt += '.';
-        steps.push({ text: capitalize(txt), cond: true });
+      if (d.container && d.narrateContainer) {
+        const txt = d.narrateContainer(p, (slot) => describeList((step.branches && step.branches[slot]) || []));
+        steps.push({ text: capitalize(txt) + '.', cond: true });
       } else if (d.narrate) {
         steps.push({ text: capitalize(d.narrate(p)) + '.', cond: false });
       }

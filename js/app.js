@@ -38,13 +38,13 @@ function buildPalette(filter = '') {
     const wrap = sec.querySelector('.pcat__items');
     items.forEach(b => {
       const el = document.createElement('div');
-      el.className = 'pblock'; el.draggable = true; el.style.setProperty('--accent', cat.color);
+      el.className = 'pblock'; el.style.setProperty('--accent', cat.color);
       el.innerHTML = `<div class="pblock__icon" style="background:${cat.color}">${icon(b.icon)}</div>
         <div style="min-width:0"><div class="pblock__name">${b.name}${b.custom ? ' <span class="chip chip--lime" style="padding:1px 6px;font-size:9px">propio</span>' : ''}</div>
         <div class="pblock__desc">${(b.desc || '').slice(0, 44)}</div></div>`;
-      el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/r8t-block', b.type); e.dataTransfer.effectAllowed = 'copy'; el.classList.add('dragging'); });
-      el.addEventListener('dragend', () => el.classList.remove('dragging'));
-      el.addEventListener('click', () => { RE.addBlock(b.type, 'root'); toast(`"${b.name}" agregado`); });
+      el.title = 'Arrastrá al flujo, o doble clic para agregar al final';
+      el.addEventListener('mousedown', e => { if (e.button === 0) RE.startNewBlockDrag(b.type, e); });
+      el.addEventListener('dblclick', () => { RE.addBlock(b.type, 'root'); toast(`"${b.name}" agregado`); });
       wrap.appendChild(el);
     });
     sec.querySelector('.pcat__head').addEventListener('click', () => sec.classList.toggle('collapsed'));
@@ -121,53 +121,100 @@ function renderPresets() {
         </div>
         <p class="preset__desc">${s.desc}</p>
         <div class="preset__meta">${Object.entries(s.meters).map(([k, v]) => `<span class="preset__meter">${k} ${bars(v)}</span>`).join('')}</div>
+        <div class="preset__actions"><button class="btn btn--soft btn--sm" data-act="load">Cargar</button><button class="btn btn--ghost btn--sm" data-act="insert">+ Combinar</button></div>
       </div>`).join('')}
   </div>`;
-  pane.querySelectorAll('.preset').forEach(card => card.addEventListener('click', () => {
-    const s = STRAT_MAP[card.dataset.id];
+  pane.querySelectorAll('.preset [data-act="load"]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const s = STRAT_MAP[btn.closest('.preset').dataset.id];
     const pg = s.build(); pg.target = RE.getTarget();       // conserva el destino elegido
     RE.loadProgram(pg);
     document.getElementById('stratName').value = s.name;
     toast(`Estrategia "${s.name}" cargada`, 'ok');
     goTab('result'); onGraphChange();
   }));
+  pane.querySelectorAll('.preset [data-act="insert"]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const s = STRAT_MAP[btn.closest('.preset').dataset.id];
+    RE.insertBlocks(s.build().root);
+    toast(`Bloques de "${s.name}" combinados`, 'ok');
+    goTab('result');
+  }));
 }
 
-/* ---------- Asistente (placeholder Groq) ---------- */
+/* ---------- Asistente IA (Groq vía /api/assistant) ---------- */
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function sanitizeProgram(root) {
+  if (!Array.isArray(root)) return [];
+  const out = [];
+  root.forEach(s => {
+    const d = s && blockDef(s.type); if (!d) return;
+    const step = { id: 'ai' + Math.random().toString(36).slice(2, 8), type: s.type, params: {} };
+    (d.params || []).forEach(pr => {
+      if (s.params && s.params[pr.key] !== undefined) step.params[pr.key] = s.params[pr.key];
+      if (pr.units && s.params && s.params[pr.key + 'Unit'] !== undefined) step.params[pr.key + 'Unit'] = s.params[pr.key + 'Unit'];
+    });
+    if (d.container) { step.branches = {}; (d.slots || []).forEach(sl => { step.branches[sl.id] = sanitizeProgram((s.branches && s.branches[sl.id]) || []); }); }
+    out.push(step);
+  });
+  return out;
+}
+async function callAssistant(message, history) {
+  const r = await fetch('/api/assistant', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, history, strategy: describeProgram(RE.getProgram()).map(s => s.text).join(' ') }),
+  });
+  if (!r.ok) throw new Error('http ' + r.status);
+  return await r.json();
+}
 function initChat() {
   const pane = document.getElementById('pane-chat');
   pane.innerHTML = `
     <div class="chat">
       <div class="chat__msgs" id="chatMsgs">
-        <div class="chat__msg chat__msg--bot">Hola 👋 Soy el asistente de R8T. Contame qué querés lograr y te armo la estrategia. (Pronto voy a poder editar los bloques por vos con IA.)</div>
+        <div class="chat__msg chat__msg--bot">Hola 👋 Soy el asistente de R8T. Contame qué querés lograr (ej: “ganar el BuyBox sin bajar del 12% de margen”) y te <b>armo la estrategia directo en el editor</b>.</div>
       </div>
       <div class="chat__quick">
-        <button data-q="Quiero vender más">Vender más</button>
-        <button data-q="Proteger mi margen">Proteger margen</button>
+        <button data-q="Quiero vender más sin perder plata">Vender más</button>
+        <button data-q="Proteger mi margen al máximo">Proteger margen</button>
         <button data-q="Ganar el BuyBox">Ganar BuyBox</button>
         <button data-q="Blindarme de subas de impuestos">Blindaje fiscal</button>
       </div>
-      <div class="chat__note">${icon('info')} <span>Fase 2: el asistente se conectará a Groq (Llama 3.3) para editar los bloques con lenguaje natural.</span></div>
+      <div class="chat__note">${icon('info')} <span>Funciona en la web publicada en Vercel (usa Groq). En esta vista previa sin backend, te sugiero una estrategia lista.</span></div>
       <div class="chat__input"><input id="chatInput" placeholder="Escribí lo que querés lograr…"><button class="btn btn--primary btn--icon" id="chatSend">${icon('play')}</button></div>
     </div>`;
   const msgs = pane.querySelector('#chatMsgs');
-  const pick = (text) => {
+  const history = [];
+  const add = (role, html) => { const d = document.createElement('div'); d.className = 'chat__msg chat__msg--' + role; d.innerHTML = html; msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d; };
+  function fallback(text) {
     const l = text.toLowerCase();
-    if (l.includes('impuesto') || l.includes('fiscal')) return 'blindaje_fiscal';
-    if (l.includes('margen') || l.includes('rentab') || l.includes('ganar plata')) return 'rentabilidad';
-    if (l.includes('buybox') || l.includes('catálogo') || l.includes('catalogo')) return 'buybox';
-    if (l.includes('liquid') || l.includes('rematar') || l.includes('stock')) return 'liquidacion';
-    if (l.includes('vender') || l.includes('crecer')) return 'crecimiento';
-    return 'equilibrado';
-  };
-  function bot(text) {
-    const s = STRAT_MAP[pick(text)];
-    const b = document.createElement('div'); b.className = 'chat__msg chat__msg--bot';
-    b.innerHTML = `Te recomiendo <b>${s.name}</b>: ${s.desc}<br><button class="btn btn--soft btn--sm" id="cl">Cargar "${s.name}"</button>`;
-    msgs.appendChild(b); msgs.scrollTop = msgs.scrollHeight;
-    b.querySelector('#cl').addEventListener('click', () => { const pg = s.build(); pg.target = RE.getTarget(); RE.loadProgram(pg); document.getElementById('stratName').value = s.name; onGraphChange(); toast(`Estrategia "${s.name}" cargada`, 'ok'); });
+    const id = (l.includes('impuesto') || l.includes('fiscal')) ? 'blindaje_fiscal' : (l.includes('margen') || l.includes('rentab')) ? 'rentabilidad' : (l.includes('buybox') || l.includes('catálogo') || l.includes('catalogo')) ? 'buybox' : (l.includes('liquid') || l.includes('rematar')) ? 'liquidacion' : (l.includes('vender') || l.includes('crecer')) ? 'crecimiento' : 'equilibrado';
+    const s = STRAT_MAP[id];
+    const b = add('bot', `Te recomiendo <b>${s.name}</b>: ${escapeHtml(s.desc)}<br><button class="btn btn--soft btn--sm" id="cl">Cargar "${s.name}"</button>`);
+    b.querySelector('#cl').addEventListener('click', () => { const pg = s.build(); pg.target = RE.getTarget(); RE.loadProgram(pg); document.getElementById('stratName').value = s.name; onGraphChange(); toast(`Estrategia "${s.name}" cargada`, 'ok'); goTab('result'); });
   }
-  function send(text) { if (!text.trim()) return; const u = document.createElement('div'); u.className = 'chat__msg chat__msg--user'; u.textContent = text; msgs.appendChild(u); msgs.scrollTop = msgs.scrollHeight; setTimeout(() => bot(text), 350); }
+  async function send(text) {
+    if (!text.trim()) return;
+    add('user', escapeHtml(text)); history.push({ role: 'user', content: text });
+    const typing = add('bot', '<span class="muted">Pensando…</span>');
+    try {
+      const res = await callAssistant(text, history.slice(-8));
+      typing.remove();
+      const reply = res.reply || 'Listo.';
+      history.push({ role: 'assistant', content: reply });
+      const root = sanitizeProgram(res.program && (res.program.root || res.program));
+      if (root.length) {
+        RE.loadProgram({ target: RE.getTarget(), root });
+        if (res.name) document.getElementById('stratName').value = res.name;
+        onGraphChange(); goTab('result');
+        add('bot', `${escapeHtml(reply)}<br><span class="muted" style="font-size:11px">✓ Estrategia cargada en el editor</span>`);
+      } else { add('bot', escapeHtml(reply)); }
+    } catch (err) {
+      typing.remove();
+      add('bot', '<span class="muted">No pude conectar con la IA acá; te sugiero una estrategia lista:</span>');
+      fallback(text);
+    }
+  }
   pane.querySelectorAll('.chat__quick button').forEach(b => b.addEventListener('click', () => send(b.dataset.q)));
   pane.querySelector('#chatSend').addEventListener('click', () => { const i = pane.querySelector('#chatInput'); send(i.value); i.value = ''; });
   pane.querySelector('#chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') { send(e.target.value); e.target.value = ''; } });
@@ -370,9 +417,16 @@ function activateStrategy() {
   if (res.margin < 0) { toast('El margen es negativo: revisá la estrategia'); return; }
   toast(`Estrategia activada para ${tgt.isGroup ? tgt.count + ' productos' : tgt.label}`, 'ok');
 }
+function starterRoot() {
+  return [
+    { id: 'st' + Date.now().toString(36) + 'a', type: 'comision_ml', params: {} },
+    { id: 'st' + Date.now().toString(36) + 'b', type: 'impuestos_generales', params: {} },
+    { id: 'st' + Date.now().toString(36) + 'c', type: 'fijar_precio', params: {} },
+  ];
+}
 function newStrategy() {
   const t = RE.getTarget() || { mode: 'product', id: 'p1' };
-  RE.loadProgram({ target: t, root: [] });
+  RE.loadProgram({ target: t, root: starterRoot() });
   document.getElementById('stratName').value = 'Mi estrategia'; onGraphChange();
 }
 
@@ -410,7 +464,7 @@ function init() {
     const raw = JSON.parse(localStorage.getItem(LS_SAVE) || 'null');
     if (raw && raw.program && raw.program.root) { RE.loadProgram(raw.program); document.getElementById('stratName').value = raw.name || 'Mi estrategia'; loaded = true; }
   } catch (e) {}
-  if (!loaded) { RE.loadProgram({ target: { mode: 'product', id: 'p1' }, root: [] }); document.getElementById('stratName').value = 'Mi estrategia'; }
+  if (!loaded) { RE.loadProgram({ target: { mode: 'product', id: 'p1' }, root: starterRoot() }); document.getElementById('stratName').value = 'Mi estrategia'; }
 
   setTimeout(() => { runSim(); markSaved(); }, 120);
 }
