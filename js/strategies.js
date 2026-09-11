@@ -5,11 +5,11 @@
 
 /* Productos individuales de muestra (datos realistas de ML AR) */
 const SAMPLE_PRODUCTS = [
-  { id: 'p1', name: 'Auriculares Bluetooth',   cost: 8500,  price: 19999,  competitor: 18990,  stock: 45,  visits: 4800 },
-  { id: 'p2', name: 'Zapatillas Running',      cost: 32000, price: 74999,  competitor: 71990,  stock: 8,   visits: 2600 },
-  { id: 'p3', name: 'Cafetera Express',        cost: 55000, price: 119999, competitor: 124990, stock: 120, visits: 1200 },
-  { id: 'p4', name: 'Smartwatch Deportivo',    cost: 21000, price: 45999,  competitor: 43990,  stock: 3,   visits: 8400 },
-  { id: 'p5', name: 'Mochila Notebook 15.6"',  cost: 9800,  price: 24999,  competitor: 23500,  stock: 210, visits: 1900 },
+  { id: 'p1', name: 'Auriculares Bluetooth',   cost: 8500,  price: 19999,  competitor: 18990,  stock: 45,  visits: 4800, competitors: 9,  daysNoSale: 1,  salesWeek: 34 },
+  { id: 'p2', name: 'Zapatillas Running',      cost: 32000, price: 74999,  competitor: 71990,  stock: 8,   visits: 2600, competitors: 6,  daysNoSale: 3,  salesWeek: 9 },
+  { id: 'p3', name: 'Cafetera Express',        cost: 55000, price: 119999, competitor: 124990, stock: 120, visits: 1200, competitors: 4,  daysNoSale: 6,  salesWeek: 5 },
+  { id: 'p4', name: 'Smartwatch Deportivo',    cost: 21000, price: 45999,  competitor: 43990,  stock: 3,   visits: 8400, competitors: 12, daysNoSale: 0,  salesWeek: 61 },
+  { id: 'p5', name: 'Mochila Notebook 15.6"',  cost: 9800,  price: 24999,  competitor: 23500,  stock: 210, visits: 1900, competitors: 5,  daysNoSale: 9,  salesWeek: 7 },
 ];
 
 /* Grupos de productos (aplicar la estrategia a todo un conjunto) */
@@ -24,10 +24,11 @@ function resolveTarget(target) {
   if (target.mode === 'group') {
     const g = SAMPLE_GROUPS.find(x => x.id === target.id) || SAMPLE_GROUPS[0];
     const rep = SAMPLE_PRODUCTS.find(p => p.id === g.rep) || SAMPLE_PRODUCTS[0];
-    return { product: rep, scale: g.count, label: g.name, count: g.count, isGroup: true };
+    // usamos los productos de muestra como "muestra representativa" del grupo
+    return { product: rep, products: SAMPLE_PRODUCTS, scale: g.count, label: g.name, count: g.count, isGroup: true };
   }
   const p = SAMPLE_PRODUCTS.find(x => x.id === target.id) || SAMPLE_PRODUCTS[0];
-  return { product: p, scale: 1, label: p.name, count: 1, isGroup: false };
+  return { product: p, products: [p], scale: 1, label: p.name, count: 1, isGroup: false };
 }
 
 /* Builder de programas */

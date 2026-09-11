@@ -176,9 +176,60 @@ function initChat() {
 /* ---------- Simulación + Resultado ---------- */
 function runSim() {
   const tgt = resolveTarget(RE.getTarget());
-  const res = simulate(RE.getProgram(), tgt.product, tgt.scale);
-  renderResult(res, tgt);
+  if (tgt.isGroup) renderGroupResult(RE.getProgram(), tgt);
+  else renderResult(simulate(RE.getProgram(), tgt.product, 1), tgt);
   renderExplain();
+}
+function projChartHTML(weeks) {
+  const maxP = Math.max(...weeks.map(w => Math.max(0, w.profit)), 1);
+  return weeks.map(w => {
+    const dim = w.units === 0;
+    const h = Math.max(3, (Math.max(0, w.profit) / maxP) * 74);
+    return `<div class="proj__bar ${dim ? 'dim' : ''}" title="Semana ${w.week}: ${w.units} u · ${money(w.profit)}"><i style="height:${h}px"></i><span>S${w.week}</span></div>`;
+  }).join('');
+}
+function renderGroupResult(program, tgt) {
+  const pane = document.getElementById('pane-result');
+  const results = tgt.products.map(p => ({ p, r: simulate(program, p, 1) }));
+  const factor = tgt.count / tgt.products.length;
+  const weeks = [];
+  for (let w = 0; w < 8; w++) {
+    let profit = 0, units = 0; results.forEach(({ r }) => { profit += r.weeks[w].profit; units += r.weeks[w].units; });
+    weeks.push({ week: w + 1, profit: profit * factor, units: Math.round(units * factor) });
+  }
+  const totalUnits = Math.round(results.reduce((s, { r }) => s + r.totalUnits, 0) * factor);
+  const totalRevenue = results.reduce((s, { r }) => s + r.totalRevenue, 0) * factor;
+  const totalProfit = results.reduce((s, { r }) => s + r.totalProfit, 0) * factor;
+  const avgMargin = results.reduce((s, { r }) => s + r.margin, 0) / results.length;
+  const rentables = results.filter(({ r }) => r.margin >= 5 && r.net > 0).length;
+  const mColor = avgMargin < 0 ? 'var(--danger)' : avgMargin < 8 ? 'var(--warn)' : 'var(--ok)';
+  const rows = results.map(({ p, r }) => {
+    const c = r.diff > 1 ? 'cmp-up' : r.diff < -1 ? 'cmp-down' : 'cmp-eq';
+    const mc = r.margin < 0 ? 'var(--danger)' : r.margin < 8 ? 'var(--warn)' : 'var(--ok)';
+    return `<div class="gp-row"><div class="gp-n">${p.name}<span class="gp-c">costo ${money(p.cost)}</span></div>
+      <div class="gp-p">${money(r.price)} <span class="gp-cmp ${c}">${r.diff >= 0 ? '+' : ''}${r.diffPct.toFixed(0)}%</span></div>
+      <div class="gp-m" style="color:${mc}">${r.margin.toFixed(0)}%</div></div>`;
+  }).join('');
+  pane.innerHTML = `
+    <div class="result">
+      <div class="result__target"><div class="ic">${icon('layers')}</div><div style="flex:1;min-width:0"><div class="n">${tgt.label}</div><div class="m">${tgt.count} publicaciones · muestra de ${tgt.products.length}</div></div></div>
+      <div class="gp-banner">${icon('info')}<span>La estrategia se aplica a <b>cada producto con su propio costo</b>. No hay un precio único: acá ves el precio sugerido de cada uno.</span></div>
+      <div class="tiles">
+        <div class="tile"><div class="l">Margen promedio</div><div class="v" style="color:${mColor}">${avgMargin.toFixed(1)}%</div></div>
+        <div class="tile"><div class="l">Rentables</div><div class="v">${rentables}/${results.length}</div></div>
+      </div>
+      <div class="section-h">${icon('precio')} Precio sugerido por producto</div>
+      <div class="gp-table"><div class="gp-row gp-head"><span>Producto</span><span>Precio</span><span>Margen</span></div>${rows}</div>
+      <div class="section-h">${icon('chart')} Proyección del grupo a 8 semanas <span class="est">estimación</span></div>
+      <div class="proj">
+        <div class="proj__chart">${projChartHTML(weeks)}</div>
+        <div class="proj__totals">
+          <div class="proj__t"><div class="l">Unidades</div><div class="v">${totalUnits.toLocaleString('es-AR')}</div></div>
+          <div class="proj__t"><div class="l">Facturación</div><div class="v">${money(totalRevenue)}</div></div>
+          <div class="proj__t"><div class="l">Ganancia</div><div class="v" style="color:${totalProfit < 0 ? 'var(--danger)' : 'var(--ok)'}">${money(totalProfit)}</div></div>
+        </div>
+      </div>
+    </div>`;
 }
 function renderResult(res, tgt) {
   const pane = document.getElementById('pane-result');

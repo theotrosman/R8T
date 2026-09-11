@@ -123,6 +123,15 @@
 .ctrl__in { width: 54px; border: none; outline: none; text-align: center; font-size: 13px; font-weight: 800; color: var(--rt-ink); background: transparent; -moz-appearance: textfield; }
 .ctrl__in::-webkit-outer-spin-button, .ctrl__in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .ctrl__u { display: grid; place-items: center; padding: 0 7px; font-size: 11px; font-weight: 700; color: var(--rt-gray-400); background: var(--rt-surface-2); }
+.ctrl__u--sel { border: none; border-left: 1px solid var(--rt-line); background: var(--rt-surface-2); color: var(--rt-blue); font-size: 12px; font-weight: 800; padding: 0 6px; outline: none; cursor: pointer; -webkit-appearance: none; appearance: none; text-align: center; }
+.ctrl__u--sel:hover { background: var(--rt-blue-050); }
+
+/* Herramientas del bloque (mover / opciones) */
+.sb__tools { display: flex; align-items: center; gap: 1px; flex: none; }
+.sb__mv { border: none; background: transparent; color: var(--rt-gray-300); width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; }
+.sb__mv:hover { background: var(--rt-blue-050); color: var(--rt-blue); }
+.sb__mv svg { width: 14px; height: 14px; }
+.sb__mv[data-move="up"] svg { transform: rotate(180deg); }
 .ctrl--sel { border: 1px solid var(--rt-line); border-radius: 8px; padding: 5px 8px; font-size: 12.5px; font-weight: 700; color: var(--rt-ink); background: #fff; height: 28px; max-width: 200px; }
 .ctrl--num:focus-within, .ctrl--sel:focus { border-color: var(--rt-blue); box-shadow: 0 0 0 3px var(--rt-blue-050); }
 .fld--tog { cursor: pointer; }

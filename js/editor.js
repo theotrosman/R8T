@@ -41,7 +41,13 @@ const RE = (() => {
   }
   function mergedParams(step) {
     const d = blockDef(step.type); const out = {};
-    (d.params || []).forEach(pr => { out[pr.key] = (step.params && step.params[pr.key] !== undefined) ? step.params[pr.key] : pr.value; });
+    (d.params || []).forEach(pr => {
+      out[pr.key] = (step.params && step.params[pr.key] !== undefined) ? step.params[pr.key] : pr.value;
+      if (pr.units && pr.units.length > 1) {
+        const uk = pr.key + 'Unit';
+        out[uk] = (step.params && step.params[uk] !== undefined) ? step.params[uk] : pr.units[0];
+      }
+    });
     return out;
   }
   function makeStep(type) {
@@ -140,7 +146,7 @@ const RE = (() => {
           <span class="sb__icon" style="background:${color}">${icon(d.icon)}</span>
           <span class="sc__when">Cuando</span>
           <span class="sc__cond">${fieldsInline(d, p)}</span>
-          <button class="sb__menu" data-menu="${step.id}" title="Opciones">${icon('dots')}</button>
+          ${toolsHTML(step.id)}
         </div>
         <div class="sc__branches">
           <div class="sc__branch sc__branch--si">
@@ -167,32 +173,45 @@ const RE = (() => {
         <div class="sb__title">${d.name}</div>
         <div class="sb__fields">${fieldsInline(d, p)}</div>
       </div>
-      <button class="sb__menu" data-menu="${step.id}" title="Opciones">${icon('dots')}</button>`;
+      ${toolsHTML(step.id)}`;
     return el;
   }
 
   /* ---------- controles en línea ---------- */
   function fieldsInline(d, p) {
-    return (d.params || []).map(pr => field(pr, p[pr.key])).join('');
+    return (d.params || []).map(pr => field(pr, p)).join('');
   }
-  function field(pr, val) {
+  function field(pr, p) {
+    const val = p[pr.key];
+    const lbl = pr.label ? `<span class="fld__l">${pr.label}</span>` : '';
     if (pr.type === 'number') {
-      return `<span class="fld"><span class="fld__l">${pr.label}</span>
+      const hasU = pr.units && pr.units.length > 1;
+      const unitSel = hasU
+        ? `<select class="ctrl__u ctrl__u--sel" data-fk="${pr.key}Unit">${pr.units.map(u => `<option value="${u}" ${(p[pr.key + 'Unit'] || pr.units[0]) === u ? 'selected' : ''}>${u}</option>`).join('')}</select>`
+        : (pr.unit ? `<span class="ctrl__u">${pr.unit}</span>` : '');
+      return `<span class="fld">${lbl}
         <span class="ctrl ctrl--num">
           <button class="ctrl__step" data-step="-1" data-fk="${pr.key}" tabindex="-1">−</button>
           <input class="ctrl__in" type="number" data-fk="${pr.key}" value="${val}" min="${pr.min ?? ''}" max="${pr.max ?? ''}" step="${pr.step ?? 1}">
-          ${pr.unit ? `<span class="ctrl__u">${pr.unit}</span>` : ''}
+          ${unitSel}
           <button class="ctrl__step" data-step="1" data-fk="${pr.key}" tabindex="-1">+</button>
         </span></span>`;
     }
     if (pr.type === 'select') {
-      return `<span class="fld"><span class="fld__l">${pr.label}</span>
+      return `<span class="fld">${lbl}
         <select class="ctrl ctrl--sel" data-fk="${pr.key}">${pr.options.map(o => `<option value="${o[0]}" ${String(val) === String(o[0]) ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></span>`;
     }
     if (pr.type === 'toggle') {
       return `<label class="fld fld--tog"><input type="checkbox" class="ctrl ctrl--tog" data-fk="${pr.key}" ${val ? 'checked' : ''}><span class="tgl"></span><span class="fld__l">${pr.label}</span></label>`;
     }
     return '';
+  }
+  function toolsHTML(id) {
+    return `<div class="sb__tools">
+      <button class="sb__mv" data-move="up" title="Subir">${icon('chevron')}</button>
+      <button class="sb__mv" data-move="down" title="Bajar">${icon('chevron')}</button>
+      <button class="sb__menu" data-menu="${id}" title="Opciones">${icon('dots')}</button>
+    </div>`;
   }
 
   /* ---------- eventos de controles ---------- */
@@ -205,6 +224,11 @@ const RE = (() => {
     cbs.onChange(); // no re-render: preserva el foco
   }
   function onChangeCtrl(e) {
+    if (e.target.classList.contains('ctrl__u--sel')) {   // cambio de unidad (% ↔ $)
+      const f = stepOf(e.target); if (!f) return;
+      f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.value;
+      cbs.onChange(); return;
+    }
     if (e.target.classList.contains('ctrl--sel')) {
       const f = stepOf(e.target); if (!f) return;
       f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.value;
@@ -234,6 +258,8 @@ const RE = (() => {
       f.step.params = f.step.params || {}; f.step.params[pr.key] = v; cbs.onChange();
       return;
     }
+    const mv = e.target.closest('[data-move]');
+    if (mv) { e.stopPropagation(); const host = mv.closest('[data-id]'); if (host) moveWithin(host.dataset.id, mv.dataset.move === 'up' ? -1 : 1); return; }
     const menu = e.target.closest('[data-menu]');
     if (menu) { e.stopPropagation(); openNodeMenu(menu, menu.dataset.menu); return; }
     const add = e.target.closest('[data-add]');

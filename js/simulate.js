@@ -8,10 +8,11 @@ function seedCtx(product) {
   return {
     cost: product.cost, basePrice: product.price, price: product.price,
     competitor: product.competitor, stock: product.stock, visits: product.visits,
+    competitors: product.competitors ?? 6, daysNoSale: product.daysNoSale ?? 0, salesWeek: product.salesWeek ?? 0,
     commissionPct: 13, fixedFee: 1095, ivaPct: 21, iibbPct: 0, taxExtraPct: 0,
     installmentPct: 0, promoPct: 0, returnReservePct: 0, retencionPct: 0,
     shipping: 0, packaging: 0, floor: 0, ceiling: Infinity,
-    targetMarginPct: null, minMarginPct: null, final: false, notes: [],
+    targetMarginPct: null, minMarginPct: null, final: false, paused: null, notes: [],
   };
 }
 
@@ -47,7 +48,7 @@ function simulate(program, product, scale = 1) {
   const weeklyVisits = (product.visits || 400) / 4;
   const ratio = competitor > 0 ? competitor / price : 1;
   const conv = clamp(0.03 * Math.pow(ratio, 2.2), 0.002, 0.30);   // más barato ⇒ más conversión
-  const unitsWeekOne = Math.max(0, weeklyVisits * conv) * scale;
+  const unitsWeekOne = ctx.paused ? 0 : Math.max(0, weeklyVisits * conv) * scale;
   const stockTotal = (product.stock || 0) * scale;
 
   const weeks = []; let cum = 0, soldTotal = 0, stockoutWeek = null;
@@ -65,7 +66,8 @@ function simulate(program, product, scale = 1) {
   const minM = ctx.minMarginPct != null ? ctx.minMarginPct : 5;
   const tgtM = ctx.targetMarginPct != null ? ctx.targetMarginPct : 20;
   let verdict;
-  if (margin < minM || net <= 0) verdict = { key: 'riesgo', label: 'No rentable', tone: 'bad', text: `El margen (${margin.toFixed(1)}%) queda por debajo de tu mínimo.` };
+  if (ctx.paused) verdict = { key: 'pausa', label: ctx.paused === 'definitivo' ? 'Pausada (definitiva)' : 'Pausada (temporal)', tone: 'warn', text: 'La publicación se pausa: no genera ventas mientras esté pausada.' };
+  else if (margin < minM || net <= 0) verdict = { key: 'riesgo', label: 'No rentable', tone: 'bad', text: `El margen (${margin.toFixed(1)}%) queda por debajo de tu mínimo.` };
   else if (competitor && diffPct > 12) verdict = { key: 'caro', label: 'Poco competitivo', tone: 'warn', text: `Estás ${diffPct.toFixed(0)}% más caro que el competidor: vas a vender poco.` };
   else if (competitor && price <= competitor && margin >= tgtM) verdict = { key: 'optima', label: 'Óptima', tone: 'ok', text: 'Competitiva y rentable: buen equilibrio.' };
   else verdict = { key: 'ok', label: 'Aceptable', tone: 'info', text: 'Precio razonable; revisá margen y competitividad.' };
@@ -74,6 +76,6 @@ function simulate(program, product, scale = 1) {
     price, basePrice: product.price, cost: product.cost, competitor,
     net, margin, varPct, fixedUnit: fixedCost(ctx), diff, diffPct,
     unitsWeek: Math.round(unitsWeekOne), weeks, totalUnits, totalRevenue, totalProfit, stockoutWeek, stockTotal,
-    verdict, notes: ctx.notes, reached: ctx.final,
+    verdict, notes: ctx.notes, reached: ctx.final, paused: ctx.paused,
   };
 }
