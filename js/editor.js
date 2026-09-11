@@ -254,13 +254,13 @@ const RE = (() => {
   function onDragMove(e) {
     if (!drag) return; moveGhost(e);
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    const stackEl = el && el.closest ? el.closest('.stack') : null;
+    const stackEl = targetStack(el);
     clearMarker(); if (stackEl) showMarker(stackEl, e.clientY);
   }
   function onDragUp(e) {
     window.removeEventListener('mousemove', onDragMove); window.removeEventListener('mouseup', onDragUp);
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    const stackEl = el && el.closest ? el.closest('.stack') : null;
+    const stackEl = targetStack(el);
     clearMarker(); flowEl.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'));
     if (drag && drag.ghost) drag.ghost.remove();
     if (stackEl && drag) {
@@ -278,6 +278,13 @@ const RE = (() => {
       }
     }
     drag = null;
+  }
+  function targetStack(el) {
+    if (!el || !el.closest) return null;
+    let s = el.closest('.stack');
+    const br = el.closest('.sc__branch');           // si estoy sobre una rama pero no sobre su pila interna, uso esa pila
+    if (br && (!s || !br.contains(s))) s = br.querySelector(':scope > [data-slot] > .stack');
+    return s;
   }
   function showMarker(stackEl, y) { clearMarker(); const idx = markerIndex(stackEl, y); const marker = document.createElement('div'); marker.className = 'drop-marker'; const cards = [...stackEl.children].filter(c => c.classList.contains('sb') || c.classList.contains('sc')); if (idx >= cards.length) stackEl.insertBefore(marker, stackEl.querySelector('.stack-add')); else stackEl.insertBefore(marker, cards[idx]); }
   function markerIndex(stackEl, y) { const cards = [...stackEl.children].filter(c => c.classList.contains('sb') || c.classList.contains('sc')); for (let i = 0; i < cards.length; i++) { const r = cards[i].getBoundingClientRect(); if (y < r.top + r.height / 2) return i; } return cards.length; }

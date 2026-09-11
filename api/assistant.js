@@ -6,7 +6,8 @@
    ============================================================ */
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+// Se prueban en orden hasta encontrar uno disponible para la cuenta (podés forzar con GROQ_MODEL)
+const MODELS = [process.env.GROQ_MODEL, 'llama-3.3-70b-versatile', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'openai/gpt-oss-120b', 'llama-3.1-8b-instant', 'gemma2-9b-it'].filter(Boolean);
 
 const SYSTEM = `Sos el asistente de R8T, un repricer visual para vendedores de Mercado Libre (Argentina), dentro de Real Trends.
 El usuario te pide una estrategia de precios y vos la CONSTRUÍS como un PROGRAMA de bloques.
@@ -76,13 +77,19 @@ module.exports = async (req, res) => {
       { role: 'user', content: userMsg },
     ];
 
-    const groqRes = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, messages, temperature: 0.4, max_tokens: 1600, response_format: { type: 'json_object' } }),
-    });
-    if (!groqRes.ok) { const t = await groqRes.text(); res.status(502).json({ error: 'Groq error', detail: t.slice(0, 500) }); return; }
-    const data = await groqRes.json();
+    let data = null, lastErr = '';
+    for (const model of MODELS) {
+      const groqRes = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages, temperature: 0.4, max_tokens: 1600, response_format: { type: 'json_object' } }),
+      });
+      if (groqRes.ok) { data = await groqRes.json(); break; }
+      lastErr = await groqRes.text();
+      // si el modelo no existe, probamos el siguiente; otro error, cortamos
+      if (!/model_not_found|does not exist|decommission/i.test(lastErr)) break;
+    }
+    if (!data) { res.status(502).json({ error: 'Groq error', detail: lastErr.slice(0, 500) }); return; }
     const content = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '{}';
     let parsed; try { parsed = JSON.parse(content); } catch (e) { parsed = { reply: content }; }
     res.status(200).json(parsed);
