@@ -111,6 +111,12 @@
 .stack-add:hover { border-color: var(--rt-blue); color: var(--rt-blue); background: var(--rt-blue-050); }
 .stack-add svg { width: 15px; height: 15px; }
 
+/* ---------- Estado vacío ---------- */
+.flow-empty { width: 460px; margin: 12px auto 0; text-align: center; color: var(--rt-gray-400); background: rgba(255,255,255,.72); border: 1.5px dashed var(--rt-gray-300); border-radius: 14px; padding: 22px 20px; }
+.flow-empty svg { width: 26px; height: 26px; color: var(--rt-teal-600); }
+.flow-empty b { display: block; color: var(--rt-gray); margin: 7px 0 4px; font-size: 14px; }
+.flow-empty span { font-size: 12.5px; line-height: 1.5; }
+
 /* ---------- Marcador de drop ---------- */
 .drop-marker { height: 4px; background: var(--rt-blue); border-radius: 3px; margin: 6px 0; box-shadow: 0 0 0 3px var(--rt-blue-050); }
 

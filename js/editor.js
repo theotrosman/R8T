@@ -110,6 +110,12 @@ const RE = (() => {
     flowEl.appendChild(connector());
     // pila raíz
     flowEl.appendChild(renderStack(program.root, 'root'));
+    if (!program.root.length) {
+      const hint = document.createElement('div');
+      hint.className = 'flow-empty';
+      hint.innerHTML = `${icon('sparkles')}<b>Empezá tu estrategia</b><span>Tocá “Agregar bloque” para sumar reglas, arrastrá bloques desde la izquierda, o cargá una estrategia lista desde el panel “Estrategias”.</span>`;
+      flowEl.appendChild(hint);
+    }
     applyZoom();
   }
   function connector() { const c = document.createElement('div'); c.className = 'connector'; return c; }

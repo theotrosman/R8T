@@ -2,7 +2,7 @@
    R8T · app.css  (v2 — chrome estilo Real Trends, serio)
    ============================================================ */
 
-.app { display: grid; grid-template-columns: 66px 1fr; height: 100vh; }
+.app { display: grid; grid-template-columns: 66px 1fr; height: 100vh; height: 100dvh; }
 
 /* ---------------- Rail ---------------- */
 .rail { background: var(--rt-surface); border-right: 1px solid var(--rt-line); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 4px; z-index: 30; }
@@ -23,7 +23,7 @@
 .topbar__logo img { height: 26px; display: block; }
 .topbar__badge { font-weight: 900; font-size: 15px; letter-spacing: .5px; color: #fff; background: var(--rt-navy); border-radius: 7px; padding: 3px 8px; }
 .topbar__sep { width: 1px; height: 26px; background: var(--rt-line); }
-.strat-name { border: 1px solid transparent; background: transparent; border-radius: 8px; font-size: 15px; font-weight: 800; color: var(--rt-ink); padding: 6px 10px; max-width: 260px; }
+.strat-name { border: 1px solid transparent; background: transparent; border-radius: 8px; font-size: 15px; font-weight: 800; color: var(--rt-ink); padding: 6px 10px; max-width: 260px; min-width: 0; flex-shrink: 1; }
 .strat-name:hover { background: var(--rt-surface-2); }
 .strat-name:focus { outline: none; border-color: var(--rt-blue); background: #fff; }
 .save-state { font-size: 12.5px; color: var(--rt-gray-400); display: flex; align-items: center; gap: 6px; }
@@ -195,4 +195,28 @@
 .toast--ok svg { color: var(--rt-teal); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
-@media (max-width: 1200px) { .workspace { grid-template-columns: 214px 1fr 330px; } }
+/* ---------------- Responsive: se ajusta a cada pantalla ---------------- */
+@media (max-width: 1360px) { .workspace { grid-template-columns: 228px 1fr 348px; } }
+@media (max-width: 1200px) {
+  .workspace { grid-template-columns: 210px 1fr 328px; }
+  .topbar__logo { display: none; }
+  .chip[data-ic-chip] { display: none; }
+}
+@media (max-width: 1040px) {
+  .workspace { grid-template-columns: 190px 1fr 300px; }
+  .save-state { display: none; }
+  .strat-name { max-width: 150px; }
+  .btn--sm { padding: 6px 9px; }
+  .topbar__actions .btn span, .topbar__actions .btn { font-size: 12px; }
+}
+@media (max-width: 900px) {
+  .app { grid-template-columns: 56px 1fr; }
+  /* Oculta la paleta: los bloques se agregan con el botón "Agregar bloque" del lienzo */
+  .workspace { grid-template-columns: 0 1fr 300px; }
+  .palette { display: none; }
+  .strat-name { display: none; }
+}
+@media (max-width: 720px) {
+  .workspace { grid-template-columns: 0 1fr 0; }   /* solo el editor; Resultado desde su tab */
+  .side { display: none; }
+}

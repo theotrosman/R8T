@@ -2,7 +2,7 @@
    R8T · app.js  (v2)
    ============================================================ */
 window.CUSTOM_BLOCKS = {};
-const LS_SAVE = 'r8t.save.v2';
+const LS_SAVE = 'r8t.save.v3';
 const LS_CUSTOM = 'r8t.custom.v2';
 let dirty = false, saveTimer = null, simTimer = null;
 
@@ -371,8 +371,8 @@ function activateStrategy() {
   toast(`Estrategia activada para ${tgt.isGroup ? tgt.count + ' productos' : tgt.label}`, 'ok');
 }
 function newStrategy() {
-  const t = RE.getTarget();
-  RE.loadProgram({ target: t, root: [{ id: 's0', type: 'comision_ml', params: {} }, { id: 's1', type: 'fijar_precio', params: {} }] });
+  const t = RE.getTarget() || { mode: 'product', id: 'p1' };
+  RE.loadProgram({ target: t, root: [] });
   document.getElementById('stratName').value = 'Mi estrategia'; onGraphChange();
 }
 
@@ -404,13 +404,13 @@ function init() {
   document.getElementById('fitView').addEventListener('click', () => RE.fitView());
   window.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); toast('Guardado', 'ok'); } });
 
-  // cargar autosave o estrategia por defecto (Equilibrado, para ver el anidado)
+  // cargar autosave si existe; si no, arrancar en un proyecto nuevo (vacío)
   let loaded = false;
   try {
     const raw = JSON.parse(localStorage.getItem(LS_SAVE) || 'null');
-    if (raw && raw.program && raw.program.root && raw.program.root.length) { RE.loadProgram(raw.program); document.getElementById('stratName').value = raw.name || 'Mi estrategia'; loaded = true; }
+    if (raw && raw.program && raw.program.root) { RE.loadProgram(raw.program); document.getElementById('stratName').value = raw.name || 'Mi estrategia'; loaded = true; }
   } catch (e) {}
-  if (!loaded) { RE.loadProgram(STRAT_MAP.equilibrado.build()); document.getElementById('stratName').value = 'Equilibrado (inteligente)'; }
+  if (!loaded) { RE.loadProgram({ target: { mode: 'product', id: 'p1' }, root: [] }); document.getElementById('stratName').value = 'Mi estrategia'; }
 
   setTimeout(() => { runSim(); markSaved(); }, 120);
 }
