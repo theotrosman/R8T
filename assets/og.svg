@@ -27,9 +27,9 @@
 
   <!-- titular -->
   <text x="80" y="300" font-size="132" font-weight="900" fill="url(#blue)" letter-spacing="-4">R8T</text>
-  <text x="80" y="368" font-size="46" font-weight="900" fill="#292828" letter-spacing="-1">Repricer con IA para Mercado Libre</text>
-  <text x="82" y="420" font-size="27" font-weight="600" fill="#585757">Armá tu estrategia de precios con bloques, condiciones e IA.</text>
-  <text x="82" y="456" font-size="27" font-weight="600" fill="#585757">Simulá el resultado en vivo. Como n8n, pero para tus precios.</text>
+  <text x="80" y="366" font-size="38" font-weight="900" fill="#292828" letter-spacing="-1">Repricer con IA para Mercado Libre</text>
+  <text x="82" y="414" font-size="26" font-weight="600" fill="#585757">Armá tu estrategia de precios con bloques e IA.</text>
+  <text x="82" y="450" font-size="26" font-weight="600" fill="#585757">Simulá el resultado en vivo. Un n8n de precios.</text>
 
   <!-- chips -->
   <g transform="translate(82,505)" font-size="21" font-weight="800">
