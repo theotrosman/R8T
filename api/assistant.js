@@ -22,6 +22,7 @@ Usá SOLO estos tipos y params:
 - comision_ml {comision:%, costoFijo:$}
 - costos_operativos {packaging:$, operativoPct:%}
 - impuestos_generales {iva:%, iibb:%, otros:%, trasladar:bool}
+- divisas {moneda:"ARS"|"USD", tc:num}   (si el costo esta en USD, convierte a ARS con la cotizacion tc; ponelo antes de impuesto_importacion)
 - impuesto_importacion {derechos:%, estadistica:%, divisa:%}
 - cambio_impuesto {impuesto:"iva"|"iibb"|"otros", variacion:pts, reajustar:bool}
 - retenciones {retencion:%, percepcion:%}

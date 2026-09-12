@@ -212,6 +212,16 @@ const BLOCKS = {
       if (p.trasladar) { ctx.price = priceForMargin(ctx, ctx.targetMarginPct || 20); note(ctx, 'ok', 'Impuestos trasladados al precio.'); }
     },
   },
+  divisas: {
+    cat: 'impuestos', name: 'Tipo de cambio (divisas)', icon: 'coins',
+    desc: 'Si tu costo está en dólares (producto importado), convertilo a pesos con la cotización, para calcular bien impuestos y márgenes. Ponelo ANTES de "Impuestos de importación".',
+    params: [
+      { key: 'moneda', label: 'El costo está en', type: 'select', value: 'ARS', options: [['ARS', 'Pesos (ARS)'], ['USD', 'Dólares (USD)']] },
+      { key: 'tc', label: 'Cotización del dólar', type: 'number', unit: '$', value: 1000, min: 1, max: 100000, step: 10, showIf: (p) => p.moneda === 'USD' },
+    ],
+    narrate: (p) => p.moneda === 'USD' ? `convierto el costo de USD a pesos (dólar a ${money(p.tc)})` : 'trabajo el costo en pesos',
+    apply: (ctx, p) => { if (p.moneda === 'USD') { ctx.cost = (ctx.cost || 0) * (+p.tc || 1); note(ctx, 'info', `Costo convertido de USD a pesos (dólar ${money(p.tc)}).`); } },
+  },
   impuesto_importacion: {
     cat: 'impuestos', name: 'Impuestos de importación / divisas', icon: 'wand',
     desc: 'Para productos importados: derechos de importación, tasa estadística y percepción por compra de divisas. Encarecen tu costo.',
