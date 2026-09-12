@@ -68,7 +68,10 @@ function targetHTML() {
   const opts = (t.mode === 'group' ? SAMPLE_GROUPS : SAMPLE_PRODUCTS)
     .map(o => `<option value="${o.id}" ${o.id === t.id ? 'selected' : ''}>${o.name}${o.count ? ` (${o.count} productos)` : ''}</option>`).join('');
   const info = resolveTarget(t);
-  const head = `
+  const meta = info.isGroup
+    ? `Se aplica a ${info.count} publicaciones. La simulación usa un producto representativo × ${info.count}.`
+    : `Costo ${money(info.product.cost)} · Precio actual ${money(info.product.price)} · Competidor ${money(info.product.competitor)} · Stock ${info.product.stock}`;
+  return `
     <div class="target-card__row">
       <div class="target-card__ic">${icon(t.mode === 'group' ? 'layers' : 'producto')}</div>
       <div style="flex:1;min-width:0">
@@ -81,36 +84,18 @@ function targetHTML() {
           <select class="target-select">${opts}</select>
         </div>
       </div>
-    </div>`;
-  if (t.mode === 'group') {
-    return head + `<div class="target-card__meta">Se aplica a ${info.count} publicaciones (cada una con su costo). La simulación usa una muestra representativa.</div>`;
-  }
-  const f = (label, key, unit) => `<label class="tfield"><span>${label}</span><span class="tfield__in">${unit === '$' ? '<i>$</i>' : ''}<input class="target-field" data-tf="${key}" type="number" value="${info.product[key]}">${unit && unit !== '$' ? `<i>${unit}</i>` : ''}</span></label>`;
-  return head + `
-    <div class="target-card__fields">
-      ${f('Costo del producto', 'cost', '$')}
-      ${f('Precio actual', 'price', '$')}
-      ${f('Precio competidor', 'competitor', '$')}
-      ${f('Stock', 'stock', 'u')}
     </div>
-    <div class="target-card__meta">Editá tu costo real acá. Para importados, sumá el bloque “Impuestos de importación / divisas” que encarece el costo.</div>`;
+    <div class="target-card__meta">${meta}</div>`;
 }
 function wireTargetDelegation() {
   const flow = document.getElementById('flow');
   flow.addEventListener('change', e => {
-    if (e.target.classList.contains('target-select')) { const t = RE.getTarget(); RE.setTarget({ mode: t.mode, id: e.target.value, data: {} }); } // cambiar de producto limpia los valores propios
-  });
-  flow.addEventListener('input', e => {
-    if (e.target.classList.contains('target-field')) {
-      const t = RE.getTarget(); t.data = t.data || {};
-      const v = parseFloat(e.target.value); t.data[e.target.dataset.tf] = isNaN(v) ? '' : v;
-      onGraphChange();   // re-simula sin re-renderizar (no pierde el foco)
-    }
+    if (e.target.classList.contains('target-select')) { const t = RE.getTarget(); RE.setTarget({ mode: t.mode, id: e.target.value }); }
   });
   flow.addEventListener('click', e => {
     const b = e.target.closest('.target-mode'); if (!b) return;
     const mode = b.dataset.mode; const first = (mode === 'group' ? SAMPLE_GROUPS : SAMPLE_PRODUCTS)[0];
-    RE.setTarget({ mode, id: first.id, data: {} });
+    RE.setTarget({ mode, id: first.id });
   });
 }
 

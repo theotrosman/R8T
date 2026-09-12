@@ -27,11 +27,8 @@ function resolveTarget(target) {
     // usamos los productos de muestra como "muestra representativa" del grupo
     return { product: rep, products: SAMPLE_PRODUCTS, scale: g.count, label: g.name, count: g.count, isGroup: true };
   }
-  const base = SAMPLE_PRODUCTS.find(x => x.id === target.id) || SAMPLE_PRODUCTS[0];
-  const d = target.data || {};
-  const product = { ...base };
-  ['cost', 'price', 'competitor', 'stock'].forEach(k => { if (d[k] !== undefined && d[k] !== '' && !isNaN(+d[k])) product[k] = +d[k]; });
-  return { product, products: [product], scale: 1, label: base.name, count: 1, isGroup: false };
+  const p = SAMPLE_PRODUCTS.find(x => x.id === target.id) || SAMPLE_PRODUCTS[0];
+  return { product: p, products: [p], scale: 1, label: p.name, count: 1, isGroup: false };
 }
 
 /* Builder de programas */

@@ -51,15 +51,7 @@
 .target-card__seg { display: inline-flex; background: #fff; border: 1px solid var(--rt-line); border-radius: 8px; overflow: hidden; }
 .target-card__seg button { border: none; background: transparent; padding: 6px 12px; font-size: 12.5px; font-weight: 700; color: var(--rt-gray); }
 .target-card__seg button.on { background: var(--rt-teal); color: #08312a; }
-.target-card__meta { font-size: 11.5px; color: var(--rt-gray-400); margin-top: 8px; line-height: 1.4; }
-.target-card__fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-.tfield { display: flex; flex-direction: column; gap: 3px; }
-.tfield > span:first-child { font-size: 10px; font-weight: 800; color: var(--rt-teal-600); text-transform: uppercase; letter-spacing: .03em; }
-.tfield__in { display: flex; align-items: stretch; border: 1px solid var(--rt-line); border-radius: 8px; background: #fff; overflow: hidden; }
-.tfield__in:focus-within { border-color: var(--rt-blue); box-shadow: 0 0 0 3px var(--rt-blue-050); }
-.tfield__in i { padding: 0 7px; font-size: 11px; font-weight: 700; color: var(--rt-gray-400); font-style: normal; background: var(--rt-surface-2); display: flex; align-items: center; }
-.tfield__in input { border: none; outline: none; width: 100%; padding: 7px 8px; font-size: 13.5px; font-weight: 800; color: var(--rt-ink); background: transparent; -moz-appearance: textfield; }
-.tfield__in input::-webkit-outer-spin-button, .tfield__in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.target-card__meta { font-size: 11.5px; color: var(--rt-gray-400); margin-top: 6px; }
 
 /* ---------- Pila ---------- */
 .stack { display: flex; flex-direction: column; align-items: stretch; }
