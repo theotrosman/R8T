@@ -180,7 +180,6 @@ function initChat() {
         <button data-q="Ganar el BuyBox">Ganar BuyBox</button>
         <button data-q="Blindarme de subas de impuestos">Blindaje fiscal</button>
       </div>
-      <div class="chat__note">${icon('info')} <span>Funciona en la web publicada en Vercel (usa Groq). En esta vista previa sin backend, te sugiero una estrategia lista.</span></div>
       <div class="chat__input"><input id="chatInput" placeholder="Escribí lo que querés lograr…"><button class="btn btn--primary btn--icon" id="chatSend">${icon('play')}</button></div>
     </div>`;
   const msgs = pane.querySelector('#chatMsgs');

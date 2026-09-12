@@ -316,7 +316,12 @@ const RE = (() => {
   function clearMarker() { flowEl.querySelectorAll('.drop-marker').forEach(x => x.remove()); }
 
   /* ---------- API ---------- */
-  function loadProgram(pg) { program = pg && pg.root ? pg : { target: { mode: 'product', id: 'p1' }, root: [] }; selected = null; render(); resetHistory(); }
+  function loadProgram(pg) {
+    program = pg && pg.root ? pg : { target: { mode: 'product', id: 'p1' }, root: [] };
+    selected = null; render(); resetHistory();
+    // abrir encuadrado: en laptops entra toda la estrategia y se ven los "Agregar bloque"
+    requestAnimationFrame(() => requestAnimationFrame(fitView));
+  }
   function getProgram() { return program; }
   function setTarget(t) { program.target = t; render(); changed(); }
   function getTarget() { return program.target; }
