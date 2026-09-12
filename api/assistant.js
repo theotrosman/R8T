@@ -93,21 +93,39 @@ module.exports = async (req, res) => {
       { role: 'user', content: userMsg },
     ];
 
+    const ask = async (model, useJson) => {
+      const b = { model, messages, temperature: 0.35, max_tokens: 4000 };
+      if (useJson) b.response_format = { type: 'json_object' };
+      return fetch(GROQ_URL, { method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+    };
     let data = null, lastErr = '';
+    // 1) modo JSON estricto, probando modelos disponibles
     for (const model of MODELS) {
-      const groqRes = await fetch(GROQ_URL, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, messages, temperature: 0.4, max_tokens: 1600, response_format: { type: 'json_object' } }),
-      });
-      if (groqRes.ok) { data = await groqRes.json(); break; }
-      lastErr = await groqRes.text();
-      // si el modelo no existe, probamos el siguiente; otro error, cortamos
-      if (!/model_not_found|does not exist|decommission/i.test(lastErr)) break;
+      const r = await ask(model, true);
+      if (r.ok) { data = await r.json(); break; }
+      lastErr = await r.text();
+      // ante error recuperable (modelo inexistente, JSON inválido, rate limit, 5xx) probamos el siguiente
+      if (!/model_not_found|does not exist|decommission|json_validate_failed|rate_limit|429|internal|5\d\d/i.test(lastErr)) break;
     }
-    if (!data) { res.status(502).json({ error: 'Groq error', detail: lastErr.slice(0, 500) }); return; }
-    const content = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '{}';
-    let parsed; try { parsed = JSON.parse(content); } catch (e) { parsed = { reply: content }; }
+    // 2) fallback: texto plano y extraemos el JSON (evita json_validate_failed en estrategias grandes)
+    if (!data) {
+      for (const model of MODELS.slice(0, 3)) {
+        const r = await ask(model, false);
+        if (r.ok) { data = await r.json(); break; }
+        lastErr = await r.text();
+      }
+    }
+    if (!data) { res.status(502).json({ error: 'Groq error', detail: lastErr.slice(0, 400) }); return; }
+
+    let content = (data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '') || '';
+    content = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+    let parsed;
+    try { parsed = JSON.parse(content); }
+    catch (e) {
+      const a = content.indexOf('{'), z = content.lastIndexOf('}');
+      if (a >= 0 && z > a) { try { parsed = JSON.parse(content.slice(a, z + 1)); } catch (e2) { parsed = { reply: content.slice(0, 800) }; } }
+      else parsed = { reply: content.slice(0, 800) || 'No pude generar la estrategia, probá reformulando.' };
+    }
     res.status(200).json(parsed);
   } catch (err) {
     res.status(500).json({ error: 'Fallo interno', detail: String(err).slice(0, 300) });

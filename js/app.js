@@ -187,7 +187,7 @@ function initChat() {
     </div>`;
   const msgs = pane.querySelector('#chatMsgs');
   const history = [];
-  const scrollDown = () => { msgs.scrollTop = msgs.scrollHeight; };
+  const scrollDown = () => { msgs.scrollTop = msgs.scrollHeight; const sb = document.querySelector('.side__body'); if (sb) sb.scrollTop = sb.scrollHeight; };
   const add = (role, html) => { const d = document.createElement('div'); d.className = 'chat__msg chat__msg--' + role; d.innerHTML = html; msgs.appendChild(d); requestAnimationFrame(scrollDown); setTimeout(scrollDown, 60); return d; };
   function fallback(text) {
     const l = text.toLowerCase();
