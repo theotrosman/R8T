@@ -175,8 +175,9 @@ function initChat() {
         <div class="chat__msg chat__msg--bot">Hola 👋 Soy el asistente de R8T. Contame qué querés lograr (ej: “ganar el BuyBox sin bajar del 12% de margen”) y te <b>armo la estrategia directo en el editor</b>.</div>
       </div>
       <div class="chat__quick">
+        <button data-q="Explicame en palabras qué hace mi estrategia actual">Explicá mi estrategia</button>
+        <button data-q="Mirá mi estrategia actual y sugerime mejoras concretas">Sugerí mejoras</button>
         <button data-q="Quiero vender más sin perder plata">Vender más</button>
-        <button data-q="Proteger mi margen al máximo">Proteger margen</button>
         <button data-q="Ganar el BuyBox">Ganar BuyBox</button>
         <button data-q="Blindarme de subas de impuestos">Blindaje fiscal</button>
       </div>
@@ -184,7 +185,8 @@ function initChat() {
     </div>`;
   const msgs = pane.querySelector('#chatMsgs');
   const history = [];
-  const add = (role, html) => { const d = document.createElement('div'); d.className = 'chat__msg chat__msg--' + role; d.innerHTML = html; msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d; };
+  const scrollDown = () => { msgs.scrollTop = msgs.scrollHeight; };
+  const add = (role, html) => { const d = document.createElement('div'); d.className = 'chat__msg chat__msg--' + role; d.innerHTML = html; msgs.appendChild(d); requestAnimationFrame(scrollDown); setTimeout(scrollDown, 60); return d; };
   function fallback(text) {
     const l = text.toLowerCase();
     const id = (l.includes('impuesto') || l.includes('fiscal')) ? 'blindaje_fiscal' : (l.includes('margen') || l.includes('rentab')) ? 'rentabilidad' : (l.includes('buybox') || l.includes('catálogo') || l.includes('catalogo')) ? 'buybox' : (l.includes('liquid') || l.includes('rematar')) ? 'liquidacion' : (l.includes('vender') || l.includes('crecer')) ? 'crecimiento' : 'equilibrado';
@@ -223,6 +225,32 @@ function initChat() {
 }
 
 /* ---------- Simulación + Resultado ---------- */
+/* ---------- Validación (sobria) ---------- */
+function validateProgram(program) {
+  const root = program.root || [];
+  if (!root.length) return ['Tu estrategia está vacía: agregá bloques o cargá una lista desde “Estrategias”.'];
+  const issues = [];
+  const types = [];
+  const walkTypes = arr => arr.forEach(s => { types.push(s.type); if (s.branches) Object.values(s.branches).forEach(walkTypes); });
+  walkTypes(root);
+  if (!types.includes('fijar_precio')) issues.push('Falta el bloque “Publicar precio”: la estrategia calcula pero no publica el precio.');
+  const walkEmpty = arr => arr.forEach(s => {
+    const d = blockDef(s.type);
+    if (d && d.container && s.branches) {
+      const empty = (d.slots || []).every(sl => !((s.branches[sl.id] || []).length));
+      if (empty) issues.push(`El bloque “${d.name}” no tiene nada adentro (no hace nada).`);
+      Object.values(s.branches).forEach(walkEmpty);
+    }
+  });
+  walkEmpty(root);
+  return issues;
+}
+function validationHTML() {
+  const issues = validateProgram(RE.getProgram());
+  if (!issues.length) return '';
+  return `<div class="valid">${icon('alert')}<div class="valid__body"><b>${issues.length} ${issues.length === 1 ? 'aviso' : 'avisos'} para revisar</b>${issues.map(i => `<span>${i}</span>`).join('')}</div></div>`;
+}
+
 function runSim() {
   const tgt = resolveTarget(RE.getTarget());
   if (tgt.isGroup) renderGroupResult(RE.getProgram(), tgt);
@@ -263,6 +291,7 @@ function renderGroupResult(program, tgt) {
     <div class="result">
       <div class="result__target"><div class="ic">${icon('layers')}</div><div style="flex:1;min-width:0"><div class="n">${tgt.label}</div><div class="m">${tgt.count} publicaciones · muestra de ${tgt.products.length}</div></div></div>
       <div class="gp-banner">${icon('info')}<span>La estrategia se aplica a <b>cada producto con su propio costo</b>. No hay un precio único: acá ves el precio sugerido de cada uno.</span></div>
+      ${validationHTML()}
       <div class="tiles">
         <div class="tile"><div class="l">Margen promedio</div><div class="v" style="color:${mColor}">${avgMargin.toFixed(1)}%</div></div>
         <div class="tile"><div class="l">Rentables</div><div class="v">${rentables}/${results.length}</div></div>
@@ -311,6 +340,7 @@ function renderResult(res, tgt) {
         ${icon(vIcon)}
         <div><b>${res.verdict.label}</b><span>${res.verdict.text}</span></div>
       </div>
+      ${validationHTML()}
 
       <div class="tiles">
         <div class="tile"><div class="l">Margen neto</div><div class="v" style="color:${marginColor}">${res.margin.toFixed(1)}%</div></div>

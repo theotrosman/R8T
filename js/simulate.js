@@ -8,7 +8,7 @@ function seedCtx(product) {
   return {
     cost: product.cost, basePrice: product.price, price: product.price,
     competitor: product.competitor, stock: product.stock, visits: product.visits,
-    competitors: product.competitors ?? 6, daysNoSale: product.daysNoSale ?? 0, salesWeek: product.salesWeek ?? 0,
+    competitors: product.competitors ?? 6, daysNoSale: product.daysNoSale ?? 0, salesWeek: product.salesWeek ?? 0, reputation: product.reputation ?? 92,
     commissionPct: 13, fixedFee: 1095, ivaPct: 21, iibbPct: 0, taxExtraPct: 0,
     installmentPct: 0, promoPct: 0, returnReservePct: 0, retencionPct: 0,
     shipping: 0, packaging: 0, floor: 0, ceiling: Infinity,

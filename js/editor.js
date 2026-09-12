@@ -162,7 +162,7 @@ const RE = (() => {
   }
 
   /* ---------- controles en línea ---------- */
-  function fieldsInline(d, p) { return (d.params || []).map(pr => field(pr, p)).join(''); }
+  function fieldsInline(d, p) { return (d.params || []).filter(pr => !pr.showIf || pr.showIf(p)).map(pr => field(pr, p)).join(''); }
   function field(pr, p) {
     const val = p[pr.key];
     const lbl = pr.label ? `<span class="fld__l">${pr.label}</span>` : '';

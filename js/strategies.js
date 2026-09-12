@@ -5,11 +5,11 @@
 
 /* Productos individuales de muestra (datos realistas de ML AR) */
 const SAMPLE_PRODUCTS = [
-  { id: 'p1', name: 'Auriculares Bluetooth',   cost: 8500,  price: 19999,  competitor: 18990,  stock: 45,  visits: 4800, competitors: 9,  daysNoSale: 1,  salesWeek: 34 },
-  { id: 'p2', name: 'Zapatillas Running',      cost: 32000, price: 74999,  competitor: 71990,  stock: 8,   visits: 2600, competitors: 6,  daysNoSale: 3,  salesWeek: 9 },
-  { id: 'p3', name: 'Cafetera Express',        cost: 55000, price: 119999, competitor: 124990, stock: 120, visits: 1200, competitors: 4,  daysNoSale: 6,  salesWeek: 5 },
-  { id: 'p4', name: 'Smartwatch Deportivo',    cost: 21000, price: 45999,  competitor: 43990,  stock: 3,   visits: 8400, competitors: 12, daysNoSale: 0,  salesWeek: 61 },
-  { id: 'p5', name: 'Mochila Notebook 15.6"',  cost: 9800,  price: 24999,  competitor: 23500,  stock: 210, visits: 1900, competitors: 5,  daysNoSale: 9,  salesWeek: 7 },
+  { id: 'p1', name: 'Auriculares Bluetooth',   cost: 8500,  price: 19999,  competitor: 18990,  stock: 45,  visits: 4800, competitors: 9,  daysNoSale: 1,  salesWeek: 34, reputation: 95 },
+  { id: 'p2', name: 'Zapatillas Running',      cost: 32000, price: 74999,  competitor: 71990,  stock: 8,   visits: 2600, competitors: 6,  daysNoSale: 3,  salesWeek: 9,  reputation: 88 },
+  { id: 'p3', name: 'Cafetera Express',        cost: 55000, price: 119999, competitor: 124990, stock: 120, visits: 1200, competitors: 4,  daysNoSale: 6,  salesWeek: 5,  reputation: 74 },
+  { id: 'p4', name: 'Smartwatch Deportivo',    cost: 21000, price: 45999,  competitor: 43990,  stock: 3,   visits: 8400, competitors: 12, daysNoSale: 0,  salesWeek: 61, reputation: 91 },
+  { id: 'p5', name: 'Mochila Notebook 15.6"',  cost: 9800,  price: 24999,  competitor: 23500,  stock: 210, visits: 1900, competitors: 5,  daysNoSale: 9,  salesWeek: 7,  reputation: 82 },
 ];
 
 /* Grupos de productos (aplicar la estrategia a todo un conjunto) */
