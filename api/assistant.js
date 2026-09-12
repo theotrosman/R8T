@@ -38,7 +38,7 @@ Usá SOLO estos tipos y params:
 - cuotas {cuotas:"3"|"6"|"9"|"12", costoFin:%, trasladar:bool}
 - devoluciones {tasa:%, costoGestion:$}
 - regla_stock {bajoU:u, bajoAjuste:num, bajoAjusteUnit:"%"|"$", altoU:u, altoAjuste:num, altoAjusteUnit:"%"|"$"}
-- regla_horario {franja:"pico"|"valle", ajuste:num, ajusteUnit:"%"|"$"}
+- regla_horario {franja:"pico"|"valle", direccion:"subir"|"bajar", ajuste:num, ajusteUnit:"%"|"$"}
 - redondeo {modo:"psy"|"d100"|"d1000"|"entero"}
 - fijar_precio {frecuencia:"5"|"15"|"30"|"60"|"120"|"180"|"360"|"720"|"1440"|"2880"}
 - alerta {canal:"push"|"email"|"whatsapp"}

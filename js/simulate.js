@@ -43,10 +43,18 @@ function simulate(program, product, scale = 1) {
   const diff = price - competitor;
   const diffPct = competitor ? (diff / competitor) * 100 : 0;
 
-  /* ---------- Proyección a futuro (8 semanas) ---------- */
+  /* ---------- Proyección a futuro (8 semanas) — modelo de demanda realista para ML ----------
+     Clave: en Mercado Libre el comprador elige el más barato / el del BuyBox.
+     Estar POR ENCIMA del competidor hunde las ventas; estar por debajo las sube (con tope).
+     Suma reputación. Si el precio no cubre costos, la ganancia da negativa. */
   const weeklyVisits = (product.visits || 400) / 4;
-  const ratio = competitor > 0 ? competitor / price : 1;
-  const conv = clamp(0.03 * Math.pow(ratio, 2.2), 0.002, 0.30);   // más barato ⇒ más conversión
+  const rel = competitor > 0 ? price / competitor : 1;          // 1 = igual al competidor
+  let compFactor;
+  if (rel <= 1) compFactor = 1 + (1 - rel) * 2.2;              // más barato → más ventas (con tope)
+  else compFactor = Math.exp(-(rel - 1) * 10);                 // más caro → caída fuerte (5% caro ≈ -40%, 15% ≈ -78%)
+  compFactor = clamp(compFactor, 0, 2.4);
+  const repFactor = clamp((ctx.reputation != null ? ctx.reputation : 92) / 90, 0.4, 1.15);
+  const conv = clamp(0.025 * compFactor * repFactor, 0, 0.5);  // conversión visitas → ventas
   const unitsWeekOne = ctx.paused ? 0 : Math.max(0, weeklyVisits * conv) * scale;
   const stockTotal = (product.stock || 0) * scale;
 
@@ -60,6 +68,7 @@ function simulate(program, product, scale = 1) {
   const totalUnits = Math.round(soldTotal);
   const totalRevenue = soldTotal * price;
   const totalProfit = cum;
+  const noSales = !ctx.paused && soldTotal < 1;
 
   /* ---------- Diagnóstico (serio, sin "salud") ---------- */
   const minM = ctx.minMarginPct != null ? ctx.minMarginPct : 5;
@@ -74,7 +83,7 @@ function simulate(program, product, scale = 1) {
   return {
     price, basePrice: product.price, cost: product.cost, competitor,
     net, margin, varPct, fixedUnit: fixedCost(ctx), diff, diffPct,
-    unitsWeek: Math.round(unitsWeekOne), weeks, totalUnits, totalRevenue, totalProfit, stockoutWeek, stockTotal,
+    unitsWeek: Math.round(unitsWeekOne), weeks, totalUnits, totalRevenue, totalProfit, stockoutWeek, stockTotal, noSales,
     verdict, notes: ctx.notes, reached: ctx.final, paused: ctx.paused,
   };
 }

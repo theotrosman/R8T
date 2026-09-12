@@ -357,6 +357,7 @@ function renderResult(res, tgt) {
           <div class="proj__t"><div class="l">Facturación</div><div class="v">${money(res.totalRevenue)}</div></div>
           <div class="proj__t"><div class="l">Ganancia</div><div class="v" style="color:${res.totalProfit < 0 ? 'var(--danger)' : 'var(--ok)'}">${money(res.totalProfit)}</div></div>
         </div>
+        ${res.noSales ? `<div class="proj__note">${icon('alert')}<span>A este precio casi no vas a vender: estás ${res.diffPct.toFixed(0)}% por encima del competidor.</span></div>` : ''}
         ${res.stockoutWeek ? `<div class="proj__note">${icon('alert')}<span>Con estas ventas, el stock se agota alrededor de la semana ${res.stockoutWeek}.</span></div>` : ''}
       </div>
 

@@ -426,14 +426,15 @@ const BLOCKS = {
     },
   },
   regla_horario: {
-    cat: 'logica', name: 'Regla por horario', icon: 'clock',
-    desc: 'Ajusta el precio en franjas de alta o baja demanda.',
+    cat: 'logica', name: 'Ajustar precio por horario', icon: 'clock',
+    desc: 'En franjas de alta o baja demanda, subí o bajá el precio lo que quieras.',
     params: [
       { key: 'franja', label: 'En', type: 'select', value: 'pico', options: [['pico', 'horario pico'], ['valle', 'baja demanda']] },
-      { key: 'ajuste', label: 'ajusto', type: 'number', units: ['%', '$'], value: 3, min: 0, max: 10000000, step: 1 },
+      { key: 'direccion', label: '', type: 'select', value: 'subir', options: [['subir', 'subir'], ['bajar', 'bajar']] },
+      { key: 'ajuste', label: 'el precio', type: 'number', units: ['%', '$'], value: 3, min: 0, max: 10000000, step: 1 },
     ],
-    narrate: (p) => `en ${p.franja === 'pico' ? 'horario pico subo' : 'baja demanda bajo'} ${umt(p, 'ajuste')}`,
-    apply: (ctx, p) => { const d = amt(p, 'ajuste', ctx.price); ctx.price += p.franja === 'pico' ? d : -d; note(ctx, 'info', `Ajuste por horario (${p.franja}).`); },
+    narrate: (p) => `en ${p.franja === 'pico' ? 'horario pico' : 'baja demanda'} ${p.direccion === 'bajar' ? 'bajo' : 'subo'} ${umt(p, 'ajuste')} el precio`,
+    apply: (ctx, p) => { const d = amt(p, 'ajuste', ctx.price); ctx.price += (p.direccion === 'bajar' ? -d : d); note(ctx, 'info', `Horario: ${p.direccion === 'bajar' ? 'bajo' : 'subo'} ${umt(p, 'ajuste')} en ${p.franja === 'pico' ? 'pico' : 'baja demanda'}.`); },
   },
   redondeo: {
     cat: 'logica', name: 'Redondeo de precio', icon: 'wand',
