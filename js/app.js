@@ -124,22 +124,24 @@ function renderPresets() {
         <div class="preset__actions"><button class="btn btn--soft btn--sm" data-act="load">Cargar</button><button class="btn btn--ghost btn--sm" data-act="insert">+ Combinar</button></div>
       </div>`).join('')}
   </div>`;
-  pane.querySelectorAll('.preset [data-act="load"]').forEach(btn => btn.addEventListener('click', e => {
-    e.stopPropagation();
-    const s = STRAT_MAP[btn.closest('.preset').dataset.id];
+  const loadPreset = (id) => {
+    const s = STRAT_MAP[id]; if (!s) return;
     const pg = s.build(); pg.target = RE.getTarget();       // conserva el destino elegido
     RE.loadProgram(pg);
     document.getElementById('stratName').value = s.name;
     toast(`Estrategia "${s.name}" cargada`, 'ok');
     goTab('result'); onGraphChange();
-  }));
-  pane.querySelectorAll('.preset [data-act="insert"]').forEach(btn => btn.addEventListener('click', e => {
-    e.stopPropagation();
-    const s = STRAT_MAP[btn.closest('.preset').dataset.id];
+  };
+  const insertPreset = (id) => {
+    const s = STRAT_MAP[id]; if (!s) return;
     RE.insertBlocks(s.build().root);
     toast(`Bloques de "${s.name}" combinados`, 'ok');
     goTab('result');
-  }));
+  };
+  // toda la tarjeta carga (intuitivo); los botones siguen funcionando
+  pane.querySelectorAll('.preset').forEach(card => card.addEventListener('click', () => loadPreset(card.dataset.id)));
+  pane.querySelectorAll('.preset [data-act="load"]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); loadPreset(btn.closest('.preset').dataset.id); }));
+  pane.querySelectorAll('.preset [data-act="insert"]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); insertPreset(btn.closest('.preset').dataset.id); }));
 }
 
 /* ---------- Asistente IA (Groq vía /api/assistant) ---------- */
