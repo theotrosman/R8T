@@ -51,7 +51,7 @@ function simulate(program, product, scale = 1) {
   const rel = competitor > 0 ? price / competitor : 1;          // 1 = igual al competidor
   let compFactor;
   if (rel <= 1) compFactor = 1 + (1 - rel) * 2.2;              // más barato → más ventas (con tope)
-  else compFactor = Math.exp(-(rel - 1) * 10);                 // más caro → caída fuerte (5% caro ≈ -40%, 15% ≈ -78%)
+  else compFactor = Math.exp(-(rel - 1) * 28);                 // más caro → cliff (7% ≈ -46%, 12% ≈ -71%, 20%+ ≈ casi 0)
   compFactor = clamp(compFactor, 0, 2.4);
   const repFactor = clamp((ctx.reputation != null ? ctx.reputation : 92) / 90, 0.4, 1.15);
   const conv = clamp(0.025 * compFactor * repFactor, 0, 0.5);  // conversión visitas → ventas
@@ -68,7 +68,7 @@ function simulate(program, product, scale = 1) {
   const totalUnits = Math.round(soldTotal);
   const totalRevenue = soldTotal * price;
   const totalProfit = cum;
-  const noSales = !ctx.paused && soldTotal < 1;
+  const noSales = !ctx.paused && soldTotal < 3;
 
   /* ---------- Diagnóstico (serio, sin "salud") ---------- */
   const minM = ctx.minMarginPct != null ? ctx.minMarginPct : 5;
