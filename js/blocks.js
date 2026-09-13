@@ -199,11 +199,11 @@ const BLOCKS = {
   /* ===== IMPUESTOS ===== */
   impuestos_generales: {
     cat: 'impuestos', name: 'Impuestos', icon: 'impuestos',
-    desc: 'Carga IVA, Ingresos Brutos (IIBB) y otros impuestos.',
+    desc: 'Cálculo para responsable inscripto: el IVA se traslada al comprador y se compensa con crédito fiscal, así que NO afecta tu margen (todos los números son SIN IVA). IIBB, percepciones y otros SÍ reducen tu ganancia.',
     params: [
-      { key: 'iva', label: 'IVA', type: 'number', unit: '%', value: 21, min: 0, max: 40, step: 0.5 },
-      { key: 'iibb', label: 'IIBB', type: 'number', unit: '%', value: 3, min: 0, max: 15, step: 0.1 },
-      { key: 'otros', label: 'Otros', type: 'number', unit: '%', value: 0, min: 0, max: 20, step: 0.5 },
+      { key: 'iva', label: 'IVA', type: 'number', unit: '%', value: 21, min: 0, max: 40, step: 0.5, hint: 'Neutro para tu margen: lo cobrás al comprador y lo compensás con crédito fiscal. Por eso los resultados son "sin IVA".' },
+      { key: 'iibb', label: 'IIBB', type: 'number', unit: '%', value: 3, min: 0, max: 15, step: 0.1, hint: 'Ingresos Brutos: SÍ reduce tu margen. Si lo bajás, sube tu ganancia.' },
+      { key: 'otros', label: 'Otros', type: 'number', unit: '%', value: 0, min: 0, max: 20, step: 0.5, hint: 'Otros impuestos sobre la venta: reducen el margen.' },
       { key: 'trasladar', label: 'Trasladar al precio', type: 'toggle', value: false },
     ],
     narrate: (p) => `considero impuestos (IVA ${p.iva}%, IIBB ${p.iibb}%)${p.trasladar ? ' y los traslado al precio' : ''}`,

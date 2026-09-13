@@ -295,9 +295,10 @@ function renderGroupResult(program, tgt) {
       <div class="gp-banner">${icon('info')}<span>La estrategia se aplica a <b>cada producto con su propio costo</b>. No hay un precio único: acá ves el precio sugerido de cada uno.</span></div>
       ${validationHTML()}
       <div class="tiles">
-        <div class="tile"><div class="l">Margen promedio</div><div class="v" style="color:${mColor}">${avgMargin.toFixed(1)}%</div></div>
+        <div class="tile"><div class="l">Margen promedio <em>sin IVA</em></div><div class="v" style="color:${mColor}">${avgMargin.toFixed(1)}%</div></div>
         <div class="tile"><div class="l">Rentables</div><div class="v">${rentables}/${results.length}</div></div>
       </div>
+      <div class="taxnote">${icon('info')}<span>Márgenes <b>sin IVA</b> (responsable inscripto). Se descuentan comisión, IIBB, retenciones y costos.</span></div>
       <div class="section-h">${icon('precio')} Precio sugerido por producto</div>
       <div class="gp-table"><div class="gp-row gp-head"><span>Producto</span><span>Precio</span><span>Margen</span></div>${rows}</div>
       <div class="section-h">${icon('chart')} Proyección del grupo a 8 semanas <span class="est">estimación</span></div>
@@ -345,11 +346,12 @@ function renderResult(res, tgt) {
       ${validationHTML()}
 
       <div class="tiles">
-        <div class="tile"><div class="l">Margen neto</div><div class="v" style="color:${marginColor}">${res.margin.toFixed(1)}%</div></div>
-        <div class="tile"><div class="l">Ganancia / unidad</div><div class="v">${money(res.net)}</div></div>
+        <div class="tile"><div class="l">Margen neto <em>sin IVA</em></div><div class="v" style="color:${marginColor}">${res.margin.toFixed(1)}%</div></div>
+        <div class="tile"><div class="l">Ganancia / u <em>sin IVA</em></div><div class="v">${money(res.net)}</div></div>
         <div class="tile"><div class="l">Costos por unidad</div><div class="v">${money(res.fixedUnit)}</div></div>
         <div class="tile"><div class="l">Ventas estimadas</div><div class="v">${res.unitsWeek}<span style="font-size:11px;font-weight:700;color:var(--rt-gray-400)"> /sem</span></div></div>
       </div>
+      <div class="taxnote">${icon('info')}<span>Todos los números son <b>sin IVA</b>: para responsable inscripto el IVA se traslada al comprador y se compensa con crédito fiscal (neutro al margen). <b>Sí</b> se descuentan comisión de ML, IIBB, retenciones, envío, cuotas y demás costos.</span></div>
 
       <div class="section-h">${icon('chart')} Proyección a 8 semanas <span class="est">estimación</span></div>
       <div class="proj">
