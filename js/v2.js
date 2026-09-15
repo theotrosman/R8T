@@ -14,6 +14,8 @@ const LS_CUSTOM  = 'r8t.custom.v2';       // bloques propios (compartido)
 
 let myStrategies = [];
 let running = [];   // [{ id, target:{mode,id}, since }]
+let chatAttached = null;             // estrategia referenciada en el chat { id, name, program }
+let suggestItems = [], suggestIdx = 0;
 let pasadaTarget = { mode: 'product', id: 'p1' };
 let editorInited = false, editorCtx = { id: null };
 
@@ -252,12 +254,15 @@ function chatFallback(text) {
 
 async function chatSend(text) {
   if (!text.trim()) return;
-  hideHero();
-  chatAdd('user', escapeHtml(text)); chatHistory.push({ role: 'user', content: text });
+  hideHero(); hideSuggest();
+  const ref = chatAttached || autoDetectStrategy(text);   // estrategia de la que estamos hablando
+  const userHtml = escapeHtml(text) + (ref ? `<span class="msg__ref">${icon('sparkles')} ${escapeHtml(ref.name)}</span>` : '');
+  chatAdd('user', userHtml);
+  chatHistory.push({ role: 'user', content: text + (ref ? ` (sobre mi estrategia "${ref.name}")` : '') });
   const link = extractLink(text);
   const typing = chatAdd('bot', '<span class="muted">Pensando…</span>');
   try {
-    const draftProgram = { target: pasadaTarget, root: [] };
+    const draftProgram = ref ? { target: pasadaTarget, root: (ref.program.root || []) } : { target: pasadaTarget, root: [] };
     const res = await callAssistant(text, chatHistory.slice(-8), draftProgram);
     typing.remove();
     const reply = res.reply || 'Listo.';
@@ -274,7 +279,10 @@ async function chatSend(text) {
     }
   } catch (err) {
     typing.remove();
-    if (link) {
+    if (ref) {
+      // sin backend, explicamos/describimos la estrategia referenciada con lo que sabemos localmente
+      chatAdd('bot', explainStrategyHtml(ref));
+    } else if (link) {
       const root = followRoot(link, extractOffset(text));
       chatAdd('bot', `No pude conectar con la IA, pero armé una estrategia para <b>seguir esa publicación</b> y posicionarte respecto a su precio:`);
       chatAdd('bot', strategyCardEl({ id: null, name: nameFromProgram(root), program: { target: pasadaTarget, root }, tag: 'IA' }));
@@ -285,21 +293,88 @@ async function chatSend(text) {
 }
 function hideHero() { const h = document.getElementById('chatHero'); if (h) h.hidden = true; }
 
+/* ---------- Estrategia adjunta (referenciada) ---------- */
+function setAttached(strat) { chatAttached = strat ? { id: strat.id, name: strat.name, program: strat.program } : null; renderAttach(); }
+function renderAttach() {
+  const box = document.getElementById('chatAttach');
+  if (!chatAttached) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = `<span class="attach-lbl">Hablando de</span><span class="attach-chip">${icon('sparkles')}<b>${escapeHtml(chatAttached.name)}</b><button data-x title="Quitar">${icon('close')}</button></span>`;
+  box.querySelector('[data-x]').addEventListener('click', () => { setAttached(null); document.getElementById('chatInput').focus(); });
+}
+/* ---------- Autocompletado con @ ---------- */
+function hideSuggest() { suggestItems = []; const b = document.getElementById('chatSuggest'); if (b) { b.hidden = true; b.innerHTML = ''; } }
+function renderSuggest() {
+  const b = document.getElementById('chatSuggest');
+  b.innerHTML = suggestItems.map((s, i) => `<button class="suggest__item ${i === suggestIdx ? 'on' : ''}" data-i="${i}">${icon('sparkles')}<span>${escapeHtml(s.name)}</span><i>${escapeHtml(s.tag || 'IA')}</i></button>`).join('');
+  b.querySelectorAll('.suggest__item').forEach(btn => btn.addEventListener('mousedown', e => { e.preventDefault(); pickSuggest(+btn.dataset.i); }));
+}
+function updateSuggest() {
+  const input = document.getElementById('chatInput');
+  const m = input.value.match(/@([^@]*)$/);
+  if (!m || !myStrategies.length) { hideSuggest(); return; }
+  const q = m[1].trim().toLowerCase();
+  suggestItems = myStrategies.filter(s => s.name.toLowerCase().includes(q)).slice(0, 6);
+  if (!suggestItems.length) { hideSuggest(); return; }
+  suggestIdx = 0; renderSuggest(); document.getElementById('chatSuggest').hidden = false;
+}
+function pickSuggest(i) {
+  const s = suggestItems[i]; if (!s) return;
+  const input = document.getElementById('chatInput');
+  input.value = input.value.replace(/@[^@]*$/, '');
+  setAttached(s); hideSuggest(); input.focus();
+}
+/* detecta una estrategia mencionada por nombre en el texto (si no hay adjunto) */
+function autoDetectStrategy(text) {
+  const t = text.toLowerCase(); let best = null;
+  myStrategies.forEach(s => { const n = (s.name || '').toLowerCase(); if (n.length >= 3 && t.includes(n) && (!best || n.length > best.name.length)) best = s; });
+  return best;
+}
+function explainStrategyHtml(strat) {
+  const steps = describeProgram(strat.program);
+  const list = steps.length ? `<div class="qh" style="margin-top:8px">${explainListHTML(strat.program)}</div>` : ' (todavía no tiene bloques).';
+  return `La estrategia <b>${escapeHtml(strat.name)}</b> hace esto:${list}`;
+}
+
 function resetChat() {
   chatHistory.length = 0;
   document.getElementById('chatMsgs').innerHTML = '';
   const hero = document.getElementById('chatHero'); if (hero) hero.hidden = false;
   const input = document.getElementById('chatInput'); if (input) input.value = '';
   const scroll = document.getElementById('chatScroll'); if (scroll) scroll.scrollTop = 0;
+  setAttached(null); hideSuggest();
 }
 function initChat() {
-  document.getElementById('chatSend').addEventListener('click', () => { const i = document.getElementById('chatInput'); chatSend(i.value); i.value = ''; });
-  document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') { chatSend(e.target.value); e.target.value = ''; } });
+  const input = document.getElementById('chatInput');
+  document.getElementById('chatSend').addEventListener('click', () => { chatSend(input.value); input.value = ''; });
+  input.addEventListener('input', updateSuggest);
+  input.addEventListener('keydown', e => {
+    const b = document.getElementById('chatSuggest');
+    if (b && !b.hidden && suggestItems.length) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); suggestIdx = (suggestIdx + 1) % suggestItems.length; renderSuggest(); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); suggestIdx = (suggestIdx - 1 + suggestItems.length) % suggestItems.length; renderSuggest(); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickSuggest(suggestIdx); return; }
+      if (e.key === 'Escape') { e.preventDefault(); hideSuggest(); return; }
+    }
+    if (e.key === 'Enter') { chatSend(e.target.value); e.target.value = ''; hideSuggest(); }
+  });
+  input.addEventListener('blur', () => setTimeout(hideSuggest, 120));
   document.querySelectorAll('[data-q]').forEach(b => b.addEventListener('click', () => chatSend(b.dataset.q)));
   document.getElementById('btnResetChat').addEventListener('click', () => {
     const hadMsgs = document.getElementById('chatMsgs').children.length > 0;
     resetChat();
     if (hadMsgs) toast('Chat reiniciado · tus estrategias guardadas siguen a la derecha', 'ok');
+  });
+  // Zona para soltar una estrategia arrastrada desde la derecha
+  const zone = document.querySelector('.v2chat');
+  zone.addEventListener('dragover', e => { if ((e.dataTransfer.types || []).includes('text/r8t-strategy')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; zone.classList.add('dropping'); } });
+  zone.addEventListener('dragleave', e => { if (e.target === zone) zone.classList.remove('dropping'); });
+  zone.addEventListener('drop', e => {
+    zone.classList.remove('dropping');
+    const id = e.dataTransfer.getData('text/r8t-strategy'); if (!id) return;
+    e.preventDefault();
+    const s = myStrategies.find(x => x.id === id);
+    if (s) { hideHero(); setAttached(s); input.focus(); toast(`Hablando de "${s.name}"`, 'ok'); }
   });
 }
 
@@ -324,6 +399,9 @@ function renderMine() {
     const first = (describeProgram(s.program)[0] || {}).text || 'Estrategia personalizada.';
     const item = document.createElement('div');
     item.className = 'mitem' + (run ? ' mitem--running' : '');
+    item.draggable = true;
+    item.addEventListener('dragstart', e => { e.dataTransfer.setData('text/r8t-strategy', s.id); e.dataTransfer.effectAllowed = 'copy'; item.classList.add('is-dragging'); });
+    item.addEventListener('dragend', () => item.classList.remove('is-dragging'));
     item.innerHTML = `
       <div class="mitem__main">
         <div class="mitem__name">${escapeHtml(s.name)} ${run ? `<span class="run-badge"><i></i>Corriendo</span>` : `<span class="chip chip--gray">${escapeHtml(s.tag || 'IA')}</span>`}</div>

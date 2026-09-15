@@ -57,7 +57,37 @@
 .composer { border-top: 1px solid var(--rt-line); background: var(--rt-surface); padding: 12px 24px 16px; }
 .composer__hint { max-width: 720px; margin: 0 auto 9px; font-size: 11.5px; color: var(--rt-gray-400); display: flex; gap: 7px; align-items: center; }
 .composer__hint svg { width: 14px; height: 14px; flex: none; color: var(--rt-gray-300); }
-.composer__bar { max-width: 720px; margin: 0 auto; display: flex; gap: 9px; align-items: center; }
+.composer__hint b { color: var(--rt-blue); font-weight: 800; }
+.composer__wrap { position: relative; max-width: 720px; margin: 0 auto; }
+.composer__bar { display: flex; gap: 9px; align-items: center; }
+
+/* Chip de estrategia adjunta */
+.composer__attach { max-width: 720px; margin: 0 auto 8px; display: flex; align-items: center; gap: 8px; }
+.attach-lbl { font-size: 11px; font-weight: 700; color: var(--rt-gray-400); }
+.attach-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--rt-blue-050); color: var(--rt-blue); border: 1px solid color-mix(in srgb, var(--rt-blue) 26%, var(--rt-line)); border-radius: var(--r-pill); padding: 4px 6px 4px 10px; font-size: 12.5px; }
+.attach-chip svg { width: 13px; height: 13px; }
+.attach-chip b { font-weight: 800; }
+.attach-chip button { border: none; background: transparent; color: var(--rt-blue); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; }
+.attach-chip button svg { width: 13px; height: 13px; }
+.attach-chip button:hover { background: color-mix(in srgb, var(--rt-blue) 16%, #fff); }
+
+/* Dropdown de sugerencias (@) */
+.suggest { position: absolute; left: 0; right: 48px; bottom: calc(100% + 8px); background: #fff; border: 1px solid var(--rt-line); border-radius: 13px; box-shadow: var(--shadow-lg); padding: 6px; z-index: 30; max-height: 240px; overflow: auto; }
+.suggest__item { display: flex; align-items: center; gap: 9px; width: 100%; border: none; background: transparent; padding: 8px 10px; border-radius: 9px; text-align: left; }
+.suggest__item svg { width: 15px; height: 15px; color: var(--rt-navy); flex: none; }
+.suggest__item span { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--rt-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggest__item i { font-size: 10.5px; font-weight: 700; font-style: normal; color: var(--rt-gray-400); }
+.suggest__item.on, .suggest__item:hover { background: var(--rt-blue-050); }
+.suggest__item.on span { color: var(--rt-blue); }
+
+/* Tag de estrategia dentro del mensaje del usuario */
+.msg__ref { display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; padding: 2px 9px; border-radius: var(--r-pill); background: rgba(255,255,255,.22); font-size: 11.5px; font-weight: 800; }
+.msg__ref svg { width: 12px; height: 12px; }
+
+/* Zona de drop del chat */
+.v2chat.dropping { outline: 2px dashed var(--rt-blue); outline-offset: -10px; background: var(--rt-blue-050); }
+.mitem[draggable="true"] { cursor: grab; }
+.mitem.is-dragging { opacity: .5; }
 .composer__bar input { flex: 1; border: 1px solid var(--rt-line); border-radius: var(--r-pill); padding: 12px 18px; font-size: 14px; outline: none; background: var(--rt-surface-2); transition: border-color .15s, background .15s; }
 .composer__bar input:focus { border-color: var(--rt-blue); background: #fff; box-shadow: 0 0 0 3px var(--rt-blue-050); }
 .composer__bar .btn--icon { width: 44px; height: 44px; border-radius: 50%; flex: none; padding: 0; justify-content: center; }

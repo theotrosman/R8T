@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="styles/theme.css?v=14">
   <link rel="stylesheet" href="styles/app.css?v=14">
   <link rel="stylesheet" href="styles/editor.css?v=14">
-  <link rel="stylesheet" href="styles/v2.css?v=4">
+  <link rel="stylesheet" href="styles/v2.css?v=5">
 </head>
 <body>
 <div class="app app--v2">
@@ -77,10 +77,14 @@
         </div>
 
         <div class="composer">
-          <div class="composer__hint" data-ic="info">Contame un objetivo concreto, o pegá el link de una publicación para seguirla y actuar en base a su precio.</div>
-          <div class="composer__bar">
-            <input id="chatInput" placeholder="Escribí lo que querés lograr con tus precios…" spellcheck="false" autocomplete="off">
-            <button class="btn btn--primary btn--icon" id="chatSend" title="Enviar" data-ic="play"></button>
+          <div class="composer__hint" data-ic="info">Contame un objetivo o pegá un link. Escribí <b>@</b> para hablar de una estrategia guardada (o arrastrala desde la derecha ⟶).</div>
+          <div class="composer__attach" id="chatAttach" hidden></div>
+          <div class="composer__wrap">
+            <div class="suggest" id="chatSuggest" hidden></div>
+            <div class="composer__bar">
+              <input id="chatInput" placeholder="Escribí lo que querés lograr, o @ para elegir una estrategia…" spellcheck="false" autocomplete="off">
+              <button class="btn btn--primary btn--icon" id="chatSend" title="Enviar" data-ic="play"></button>
+            </div>
           </div>
         </div>
       </section>
@@ -186,6 +190,6 @@
 <script src="js/strategies.js?v=16"></script>
 <script src="js/editor.js?v=14"></script>
 <script src="js/simulate.js?v=14"></script>
-<script src="js/v2.js?v=6"></script>
+<script src="js/v2.js?v=7"></script>
 </body>
 </html>
