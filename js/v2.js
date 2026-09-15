@@ -464,6 +464,15 @@ function renderMine() {
     return;
   }
   box.innerHTML = '';
+  // Para desambiguar títulos repetidos: destino (producto/grupo) de cada estrategia y conteos
+  const tgtLabelOf = s => resolveTarget((running.find(r => r.id === s.id) || {}).target || s.program.target || pasadaTarget).label;
+  const nameCounts = {}, comboCounts = {}, comboSeen = {};
+  myStrategies.forEach(s => {
+    const nk = (s.name || '').trim().toLowerCase();
+    const ck = nk + '||' + (tgtLabelOf(s) || '').toLowerCase();
+    nameCounts[nk] = (nameCounts[nk] || 0) + 1;
+    comboCounts[ck] = (comboCounts[ck] || 0) + 1;
+  });
   myStrategies.forEach(s => {
     const run = running.find(r => r.id === s.id);
     const ownTgt = resolveTarget((run && run.target) || s.program.target || pasadaTarget);
@@ -471,6 +480,14 @@ function renderMine() {
     const forDesc = ownTgt.isGroup
       ? `Estrategia para el grupo “${escapeHtml(ownTgt.label)}” (${ownTgt.count} publicaciones)`
       : `Estrategia para ${escapeHtml(ownTgt.label)}`;
+    // Si el nombre se repite, aclaramos con el producto/grupo; si además coincide el destino, numeramos.
+    const nk = (s.name || '').trim().toLowerCase();
+    const ck = nk + '||' + (ownTgt.label || '').toLowerCase();
+    let dispName = escapeHtml(s.name);
+    if (nameCounts[nk] > 1) {
+      dispName += ` <span class="mitem__scope">(${escapeHtml(ownTgt.label)})</span>`;
+      if (comboCounts[ck] > 1) { comboSeen[ck] = (comboSeen[ck] || 0) + 1; dispName += ` <span class="mitem__scope">#${comboSeen[ck]}</span>`; }
+    }
     let priceLine;
     if (run) {
       const rep = republishText(s.program);
@@ -487,7 +504,7 @@ function renderMine() {
     item.addEventListener('dragend', () => item.classList.remove('is-dragging'));
     item.innerHTML = `
       <div class="mitem__main">
-        <div class="mitem__name">${escapeHtml(s.name)} ${run ? `<span class="run-badge"><i></i>Corriendo</span>` : `<span class="chip chip--gray">${escapeHtml(s.tag || 'IA')}</span>`}</div>
+        <div class="mitem__name">${dispName} ${run ? `<span class="run-badge"><i></i>Corriendo</span>` : `<span class="chip chip--gray">${escapeHtml(s.tag || 'IA')}</span>`}</div>
         <div class="mitem__for">${icon(ownTgt.isGroup ? 'layers' : 'producto')} ${forDesc}</div>
         <div class="mitem__price">${priceLine}</div>
       </div>
