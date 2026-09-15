@@ -60,7 +60,8 @@
 .composer__bar { max-width: 720px; margin: 0 auto; display: flex; gap: 9px; align-items: center; }
 .composer__bar input { flex: 1; border: 1px solid var(--rt-line); border-radius: var(--r-pill); padding: 12px 18px; font-size: 14px; outline: none; background: var(--rt-surface-2); transition: border-color .15s, background .15s; }
 .composer__bar input:focus { border-color: var(--rt-blue); background: #fff; box-shadow: 0 0 0 3px var(--rt-blue-050); }
-.composer__bar .btn--icon { width: 44px; height: 44px; border-radius: 50%; flex: none; }
+.composer__bar .btn--icon { width: 44px; height: 44px; border-radius: 50%; flex: none; padding: 0; justify-content: center; }
+.composer__bar .btn--icon svg { position: relative; left: 1px; } /* centrado óptico del triángulo ▶ */
 
 /* ================= Panel derecho ================= */
 .v2side { background: var(--rt-surface); border-left: 1px solid var(--rt-line); display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
