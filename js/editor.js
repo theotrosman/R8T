@@ -179,6 +179,10 @@ const RE = (() => {
           <button class="ctrl__step" data-step="1" data-fk="${pr.key}" tabindex="-1">+</button>
         </span></span>`;
     }
+    if (pr.type === 'text') {
+      const safe = String(val == null ? '' : val).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      return `<span class="fld fld--txt">${lbl}<input class="ctrl ctrl--txt" type="text" data-fk="${pr.key}" value="${safe}" placeholder="${(pr.placeholder || '').replace(/"/g, '&quot;')}" spellcheck="false"></span>`;
+    }
     if (pr.type === 'select') return `<span class="fld">${lbl}<select class="ctrl ctrl--sel" data-fk="${pr.key}">${pr.options.map(o => `<option value="${o[0]}" ${String(val) === String(o[0]) ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></span>`;
     if (pr.type === 'toggle') return `<label class="fld fld--tog"><input type="checkbox" class="ctrl ctrl--tog" data-fk="${pr.key}" ${val ? 'checked' : ''}><span class="tgl"></span><span class="fld__l">${pr.label}</span></label>`;
     return '';
@@ -193,6 +197,7 @@ const RE = (() => {
   /* ---------- eventos de controles ---------- */
   function stepOf(node) { const c = node.closest('[data-id]'); return c ? findStep(c.dataset.id) : null; }
   function onInput(e) {
+    if (e.target.classList.contains('ctrl--txt')) { const f = stepOf(e.target); if (!f) return; f.step.params = f.step.params || {}; f.step.params[e.target.dataset.fk] = e.target.value; changed(); return; }
     if (!e.target.classList.contains('ctrl__in')) return;
     const f = stepOf(e.target); if (!f) return;
     let v = parseFloat(e.target.value); if (isNaN(v)) return;

@@ -31,6 +31,15 @@ function note(ctx, level, text) { ctx.notes.push({ level, text }); }
 function amt(p, key, base) { const u = p[key + 'Unit'] || '$'; const v = +p[key] || 0; return u === '%' ? base * (v / 100) : v; }
 /* Muestra un valor con su unidad como texto */
 function umt(p, key) { const u = p[key + 'Unit'] || '$'; const v = +p[key] || 0; return u === '%' ? `${v}%` : money(v); }
+/* Acorta un link de ML para mostrarlo (usa el id MLA-… si está) */
+function shortLink(url) {
+  if (!url) return 'esa publicación';
+  const s = String(url).trim();
+  const m = s.match(/(ML[A-Z])-?(\d{6,})/i);
+  if (m) return (m[1] + '-' + m[2]).toUpperCase();
+  const clean = s.replace(/^https?:\/\//, '').replace(/^www\./, '');
+  return clean.length > 36 ? clean.slice(0, 34) + '…' : clean;
+}
 /* Frecuencia legible a partir de minutos */
 function freqTxt(min) { const m = +min; if (m < 60) return `${m} min`; if (m < 1440) return `${m / 60} h`.replace('.5', '½'); return `${m / 1440} día${m / 1440 > 1 ? 's' : ''}`; }
 const FREQ_OPTS = [['5', 'cada 5 min'], ['15', 'cada 15 min'], ['30', 'cada 30 min'], ['60', 'cada 1 hora'], ['120', 'cada 2 horas'], ['180', 'cada 3 horas'], ['360', 'cada 6 horas'], ['720', 'cada 12 horas'], ['1440', 'cada 1 día'], ['2880', 'cada 2 días']];
@@ -131,6 +140,26 @@ const BLOCKS = {
       if (ctx.floor) target = Math.max(target, ctx.floor);
       ctx.price = target;
       note(ctx, ctx.price <= ctx.competitor ? 'ok' : 'warn', ctx.price <= ctx.competitor ? `Precio competitivo para el BuyBox (${money(ctx.price)}).` : 'No se pudo superar al BuyBox sin perder rentabilidad.');
+    },
+  },
+  seguir_competidor: {
+    cat: 'competencia', name: 'Seguir competidor (por link)', icon: 'competencia',
+    desc: 'Seguí una publicación puntual por su link y ajustá tu precio en base al de ESE competidor.',
+    params: [
+      { key: 'link', label: 'Publicación', type: 'text', value: '', placeholder: 'Pegá el link de la publicación de Mercado Libre…' },
+      { key: 'modo', label: 'Quedar', type: 'select', value: 'debajo', options: [['igualar', 'igualando su precio'], ['debajo', 'por debajo'], ['encima', 'por encima']] },
+      { key: 'offset', label: 'Diferencia', type: 'number', units: ['$', '%'], value: 100, min: 0, max: 10000000, step: 10, showIf: (p) => p.modo !== 'igualar' },
+      { key: 'respetarPiso', label: 'Nunca perforar mi piso', type: 'toggle', value: true },
+    ],
+    narrate: (p) => `sigo la publicación ${shortLink(p.link)} y ${p.modo === 'igualar' ? 'igualo su precio' : `me pongo ${umt(p, 'offset')} ${p.modo === 'debajo' ? 'por debajo' : 'por encima'}`}`,
+    apply: (ctx, p) => {
+      if (!p.link) { note(ctx, 'info', 'Pegá el link de la publicación que querés seguir para activar este bloque.'); return; }
+      if (!ctx.competitor) { note(ctx, 'info', `Sin lectura de precio de ${shortLink(p.link)} todavía (se toma al conectar con Mercado Libre).`); return; }
+      const off = amt(p, 'offset', ctx.competitor);
+      let target = ctx.competitor + (p.modo === 'debajo' ? -off : p.modo === 'encima' ? off : 0);
+      if (p.respetarPiso && ctx.floor && target < ctx.floor) { target = ctx.floor; note(ctx, 'warn', `La publicación seguida (${money(ctx.competitor)}) está por debajo de tu piso: se frenó en el piso.`); }
+      else note(ctx, 'ok', `Sigo ${shortLink(p.link)} (${money(ctx.competitor)}) y me posiciono en ${money(target)}.`);
+      ctx.price = target;
     },
   },
 

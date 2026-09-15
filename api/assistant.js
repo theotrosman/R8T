@@ -27,6 +27,7 @@ Usá SOLO estos tipos y params:
 - cambio_impuesto {impuesto:"iva"|"iibb"|"otros", variacion:pts, reajustar:bool}
 - retenciones {retencion:%, percepcion:%}
 - igualar_competencia {modo:"igualar"|"debajo"|"encima", offset:num, offsetUnit:"$"|"%", respetarPiso:bool}
+- seguir_competidor {link:"URL de la publicacion de Mercado Libre", modo:"igualar"|"debajo"|"encima", offset:num, offsetUnit:"$"|"%", respetarPiso:bool}   (sigue UNA publicacion puntual por su link y se posiciona respecto a ESE competidor)
 - ganar_buybox {delta:num, deltaUnit:"$"|"%", maxIntentos:%}
 - margen_objetivo {target:%, modo:"fijar"|"minimo"}
 - piso_rentabilidad {min:%}
@@ -62,6 +63,10 @@ Reglas:
 - Cuando MODIFIQUES la estrategia, partí del "Programa actual" que te paso y cambiá SOLO lo que el usuario pide;
   el resto dejalo IDÉNTICO. No repitas cambios ya hechos (ej: si el IVA ya está en 24, no le sumes otra vez).
 - Al CREAR una estrategia de cero: empezá con comision_ml e impuestos_generales, incluí piso_rentabilidad y TERMINÁ con fijar_precio.
+- Si el usuario PEGA UN LINK de una publicación (contiene "http" o un id "MLA…"), usá el bloque seguir_competidor
+  con ese link EXACTO en params.link, y armá la estrategia para actuar en base a esa publicación (por ejemplo:
+  comision_ml → piso_rentabilidad → seguir_competidor{link, modo:"debajo"} → redondeo → fijar_precio). Copiá el link
+  tal cual lo mandó el usuario, no lo inventes ni lo acortes.
 - Sé realista y conservador para Mercado Libre AR. Todo desde la óptica del vendedor.
 - No inventes tipos ni params que no estén en la lista.`;
 

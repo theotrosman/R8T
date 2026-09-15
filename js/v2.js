@@ -87,6 +87,37 @@ async function callAssistant(message, history, program) {
   return await r.json();
 }
 
+/* Detecta un link de publicación (URL o id MLA…) en el texto del usuario */
+function extractLink(text) {
+  const m = String(text).match(/https?:\/\/\S+/i) || String(text).match(/\b(ML[A-Z]-?\d{6,})\b/i);
+  return m ? m[0].replace(/[)\].,]+$/, '') : '';
+}
+/* Programa base para "seguir a esta publicación" */
+function followRoot(link) {
+  return [
+    { id: uid(), type: 'comision_ml', params: {} },
+    { id: uid(), type: 'piso_rentabilidad', params: { min: 10 } },
+    { id: uid(), type: 'seguir_competidor', params: { link, modo: 'debajo', offset: 100, offsetUnit: '$', respetarPiso: true } },
+    { id: uid(), type: 'redondeo', params: { modo: 'psy' } },
+    { id: uid(), type: 'fijar_precio', params: { frecuencia: '15' } },
+  ];
+}
+/* Garantiza que, si hay link, el bloque seguir_competidor lo tenga cargado */
+function ensureFollowLink(root, link) {
+  let found = false;
+  const walk = arr => arr.forEach(s => {
+    if (s.type === 'seguir_competidor') { found = true; s.params = s.params || {}; if (!s.params.link) s.params.link = link; }
+    if (s.branches) Object.values(s.branches).forEach(walk);
+  });
+  walk(root);
+  if (!found) {
+    const blk = { id: uid(), type: 'seguir_competidor', params: { link, modo: 'debajo', offset: 100, offsetUnit: '$', respetarPiso: true } };
+    const i = root.findIndex(s => s.type === 'fijar_precio');
+    if (i >= 0) root.splice(i, 0, blk); else root.push(blk);
+  }
+  return root;
+}
+
 const chatHistory = [];
 function chatScrollDown() { const s = document.getElementById('chatScroll'); if (s) s.scrollTop = s.scrollHeight; }
 function chatAdd(role, html) {
@@ -151,6 +182,7 @@ async function chatSend(text) {
   if (!text.trim()) return;
   hideHero();
   chatAdd('user', escapeHtml(text)); chatHistory.push({ role: 'user', content: text });
+  const link = extractLink(text);
   const typing = chatAdd('bot', '<span class="muted">Pensando…</span>');
   try {
     const draftProgram = { target: pasadaTarget, root: [] };
@@ -158,17 +190,24 @@ async function chatSend(text) {
     typing.remove();
     const reply = res.reply || 'Listo.';
     chatHistory.push({ role: 'assistant', content: reply });
-    const root = res.program ? sanitizeProgram(res.program.root || res.program) : [];
+    let root = res.program ? sanitizeProgram(res.program.root || res.program) : [];
+    if (root.length && link) ensureFollowLink(root, link);
+    if (!root.length && link) root = followRoot(link);   // el modelo no armó nada pero hay link: lo hacemos igual
     if (root.length) {
       chatAdd('bot', escapeHtml(reply));
-      const strat = { id: null, name: res.name || 'Estrategia sugerida', program: { target: pasadaTarget, root }, tag: 'IA' };
+      const strat = { id: null, name: res.name || (link ? 'Seguir competidor' : 'Estrategia sugerida'), program: { target: pasadaTarget, root }, tag: 'IA' };
       chatAdd('bot', strategyCardEl(strat));
     } else {
       chatAdd('bot', escapeHtml(reply));
     }
   } catch (err) {
     typing.remove();
-    chatFallback(text);
+    if (link) {
+      chatAdd('bot', `No pude conectar con la IA, pero armé una estrategia para <b>seguir esa publicación</b> y quedar por debajo de su precio:`);
+      chatAdd('bot', strategyCardEl({ id: null, name: 'Seguir competidor', program: { target: pasadaTarget, root: followRoot(link) }, tag: 'IA' }));
+    } else {
+      chatFallback(text);
+    }
   }
 }
 function hideHero() { const h = document.getElementById('chatHero'); if (h) h.hidden = true; }
@@ -460,7 +499,9 @@ function openEditor(strat) {
   document.getElementById('edName').value = (strat && strat.name) || 'Mi estrategia';
   const sheet = document.getElementById('editorSheet');
   sheet.hidden = false; document.body.classList.add('sheet-open');
-  requestAnimationFrame(() => requestAnimationFrame(() => { RE.loadProgram(clone(program)); renderEditorExplain(); }));
+  // render sincrónico (no depende de requestAnimationFrame, que se pausa si la pestaña está oculta);
+  // loadProgram ya difiere internamente el fitView para medir el canvas cuando ya es visible.
+  RE.loadProgram(clone(program)); renderEditorExplain();
 }
 function closeEditor() { document.getElementById('editorSheet').hidden = true; document.body.classList.remove('sheet-open'); }
 function initEditorChrome() {
