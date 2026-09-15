@@ -29,7 +29,6 @@ Usá SOLO estos tipos y params:
 - impuesto_importacion {derechos:%, estadistica:%, divisa:%}
 - cambio_impuesto {impuesto:"iva"|"iibb"|"otros", variacion:pts, reajustar:bool}
 - retenciones {retencion:%, percepcion:%}
-- igualar_competencia {modo:"igualar"|"debajo"|"encima", offset:num, offsetUnit:"$"|"%", respetarPiso:bool}
 - seguir_competidor {link:"URL de la publicacion de Mercado Libre", accion:"posicionar"|"solo_bajar"|"alertar", modo:"igualar"|"debajo"|"encima", offset:num, offsetUnit:"$"|"%", respetarPiso:bool}   (sigue UNA publicacion puntual por su link. accion: "posicionar"=ajusta el precio; "solo_bajar"=solo actua si ese competidor te esta ganando, nunca sube; "alertar"=solo avisa, no toca el precio. Podes combinarlo con condicion usando variable "competitor" o "dif_competidor" para logica avanzada.)
 - ganar_buybox {delta:num, deltaUnit:"$"|"%", maxIntentos:%}
 - margen_objetivo {target:%, modo:"fijar"|"minimo"}

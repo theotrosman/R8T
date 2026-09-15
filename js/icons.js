@@ -61,6 +61,7 @@ const ICONS = {
   stock:       '<path d="M3 7 12 3l9 4v10l-9 4-9-4z"/><path d="M12 12v9M3 7l9 5 9-5"/>',
   stop:        '<rect x="6" y="6" width="12" height="12" rx="2.5"/>',
   pause:       '<path d="M8 5v14M16 5v14"/>',
+  refresh:     '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/>',
 };
 
 function icon(name, cls) {

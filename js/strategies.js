@@ -52,7 +52,7 @@ const STRATEGIES = [
     build: () => prog('cre', [
       { t: 'comision_ml' }, { t: 'impuestos_generales' },
       { t: 'piso_rentabilidad', p: { min: 6 } },
-      { t: 'igualar_competencia', p: { modo: 'debajo', offset: 100, respetarPiso: true } },
+      { t: 'ganar_buybox', p: { delta: 100, maxIntentos: 15 } },
       { t: 'redondeo', p: { modo: 'psy' } }, { t: 'fijar_precio', p: { frecuencia: '15' } },
     ]),
   },
@@ -102,7 +102,7 @@ const STRATEGIES = [
       {
         t: 'condicion', p: { variable: 'stock', op: 'lt', valor: 15 },
         si: [{ t: 'regla_stock', p: { bajoU: 15, bajoAjuste: 8, altoU: 200, altoAjuste: 4 } }],
-        no: [{ t: 'igualar_competencia', p: { modo: 'debajo', offset: 150, respetarPiso: true } }],
+        no: [{ t: 'ganar_buybox', p: { delta: 150, maxIntentos: 8 } }],
       },
       { t: 'redondeo', p: { modo: 'psy' } }, { t: 'fijar_precio', p: { frecuencia: '30' } },
     ]),

@@ -64,8 +64,8 @@ Helpers disponibles (en `blocks.js`): `variablePct(ctx)`, `fixedCost(ctx)`,
 > grupo) y desde ahí se apilan los bloques. La simulación siembra el `ctx` desde el
 > producto elegido (`simulate.js → seedCtx`).
 
-**Competencia** · `igualar_competencia` (igualar/debajo/encima + offset) · `ganar_buybox`
-(ganar por $X sin perforar piso).
+**Competencia** · `ganar_buybox` (ganar por $X sin perforar piso) · `seguir_competidor`
+(sigue UNA publicación por su link; acción posicionar / solo si me gana / solo avisar).
 
 **Márgenes** · `margen_objetivo` (precio por margen deseado) · `piso_rentabilidad` (margen
 mínimo, red de seguridad) · `techo_precio` (límite superior).

@@ -107,24 +107,6 @@ function evalCond(ctx, p) {
 const BLOCKS = {
 
   /* ===== COMPETENCIA ===== */
-  igualar_competencia: {
-    cat: 'competencia', name: 'Igualar / superar competencia', icon: 'competencia',
-    desc: 'Ajusta tu precio en relación al competidor de referencia (o al ganador del BuyBox).',
-    params: [
-      { key: 'modo', label: 'Quedar', type: 'select', value: 'debajo', options: [['igualar', 'igualando al competidor'], ['debajo', 'por debajo'], ['encima', 'por encima']] },
-      { key: 'offset', label: 'Diferencia', type: 'number', units: ['$', '%'], value: 50, min: 0, max: 10000000, step: 10 },
-      { key: 'respetarPiso', label: 'Nunca perforar mi piso', type: 'toggle', value: true },
-    ],
-    narrate: (p) => p.modo === 'igualar' ? 'igualo mi precio al del competidor' : `me pongo ${umt(p, 'offset')} ${p.modo === 'debajo' ? 'por debajo' : 'por encima'} del competidor`,
-    apply: (ctx, p) => {
-      if (!ctx.competitor) { note(ctx, 'info', 'Sin precio de competidor: bloque omitido.'); return; }
-      const off = amt(p, 'offset', ctx.competitor);
-      let target = ctx.competitor + (p.modo === 'debajo' ? -off : p.modo === 'encima' ? off : 0);
-      if (p.respetarPiso && ctx.floor && target < ctx.floor) { target = ctx.floor; note(ctx, 'warn', 'El competidor está por debajo de tu piso: se frenó en el piso.'); }
-      else note(ctx, 'ok', `Posicionado respecto al competidor (${money(ctx.competitor)}).`);
-      ctx.price = target;
-    },
-  },
   ganar_buybox: {
     cat: 'competencia', name: 'Ganar el BuyBox', icon: 'target',
     desc: 'Intenta ganar el catálogo quedando apenas por debajo del ganador, sin perforar tu piso.',

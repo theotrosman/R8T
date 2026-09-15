@@ -158,7 +158,7 @@ function nameFromProgram(root) {
   const flat = []; const walk = a => a.forEach(s => { flat.push(s); if (s.branches) Object.values(s.branches).forEach(walk); }); walk(root || []);
   const find = t => flat.find(s => s.type === t);
   let s;
-  if ((s = find('seguir_competidor') || find('igualar_competencia'))) {
+  if ((s = find('seguir_competidor'))) {
     const p = RE.mergedParams(s);
     if (p.modo === 'igualar') return 'Igualar al competidor';
     return `${fmtOffset(p)} ${p.modo === 'encima' ? 'sobre' : 'bajo'} el competidor`;
@@ -285,10 +285,22 @@ async function chatSend(text) {
 }
 function hideHero() { const h = document.getElementById('chatHero'); if (h) h.hidden = true; }
 
+function resetChat() {
+  chatHistory.length = 0;
+  document.getElementById('chatMsgs').innerHTML = '';
+  const hero = document.getElementById('chatHero'); if (hero) hero.hidden = false;
+  const input = document.getElementById('chatInput'); if (input) input.value = '';
+  const scroll = document.getElementById('chatScroll'); if (scroll) scroll.scrollTop = 0;
+}
 function initChat() {
   document.getElementById('chatSend').addEventListener('click', () => { const i = document.getElementById('chatInput'); chatSend(i.value); i.value = ''; });
   document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') { chatSend(e.target.value); e.target.value = ''; } });
   document.querySelectorAll('[data-q]').forEach(b => b.addEventListener('click', () => chatSend(b.dataset.q)));
+  document.getElementById('btnResetChat').addEventListener('click', () => {
+    const hadMsgs = document.getElementById('chatMsgs').children.length > 0;
+    resetChat();
+    if (hadMsgs) toast('Chat reiniciado · tus estrategias guardadas siguen a la derecha', 'ok');
+  });
 }
 
 /* ============================================================
@@ -577,7 +589,7 @@ function initEditorOnce() {
 function starterRoot() {
   return [
     { id: uid(), type: 'comision_ml', params: {} },
-    { id: uid(), type: 'igualar_competencia', params: { modo: 'debajo', offset: 100, respetarPiso: true } },
+    { id: uid(), type: 'ganar_buybox', params: { delta: 100, maxIntentos: 8 } },
     { id: uid(), type: 'fijar_precio', params: {} },
   ];
 }
