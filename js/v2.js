@@ -100,9 +100,10 @@ function sanitizeProgram(root) {
   return out;
 }
 async function callAssistant(message, history, program) {
+  const strategy = program ? describeProgram(program).map(s => s.text).join(' ') : '';
   const r = await fetch('/api/assistant', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history, strategy: describeProgram(program).map(s => s.text).join(' '), program }),
+    body: JSON.stringify({ message, history, strategy, program: program || undefined }),
   });
   if (!r.ok) throw new Error('http ' + r.status);
   return await r.json();
@@ -213,6 +214,7 @@ function chatAdd(role, html) {
 function strategyCardEl(strat, opts = {}) {
   const tgt = resolveTarget(pasadaTarget);
   const res = simulate(strat.program, tgt.product, 1);
+  const isUpdate = strat.id && myStrategies.some(s => s.id === strat.id);
   const card = document.createElement('div');
   card.className = 'scard';
   card.innerHTML = `
@@ -230,15 +232,15 @@ function strategyCardEl(strat, opts = {}) {
     </div>
     <div class="scard__actions">
       <button class="btn btn--primary btn--sm" data-a="pasada">${icon('play')} Ver pasada</button>
-      <button class="btn btn--soft btn--sm" data-a="save">${icon('save')} Guardar</button>
+      <button class="btn btn--soft btn--sm" data-a="save">${icon('save')} ${isUpdate ? 'Guardar cambios' : 'Guardar'}</button>
       <button class="btn btn--ghost btn--sm" data-a="edit">${icon('edit')} Editar</button>
     </div>`;
   card.querySelector('[data-a="pasada"]').addEventListener('click', () => openPasada(clone(strat)));
   const saveBtn = card.querySelector('[data-a="save"]');
   saveBtn.addEventListener('click', () => {
     const id = saveStrategy({ id: strat.id || null, name: strat.name, program: strat.program, tag: strat.tag });
-    strat.id = id; saveBtn.disabled = true; saveBtn.innerHTML = `${icon('checkc')} Guardada`;
-    toast(`"${strat.name}" guardada en Mis estrategias`, 'ok');
+    strat.id = id; saveBtn.disabled = true; saveBtn.innerHTML = `${icon('checkc')} ${isUpdate ? 'Cambios guardados' : 'Guardada'}`;
+    toast(isUpdate ? `Cambios guardados en "${strat.name}"` : `"${strat.name}" guardada en Mis estrategias`, 'ok');
   });
   card.querySelector('[data-a="edit"]').addEventListener('click', () => openEditor(clone(strat)));
   if (opts.saved) { saveBtn.disabled = true; saveBtn.innerHTML = `${icon('checkc')} Guardada`; }
@@ -267,7 +269,7 @@ async function chatSend(text) {
   const link = extractLink(text);
   const typing = chatAdd('bot', '<span class="muted">Pensando…</span>');
   try {
-    const draftProgram = ref ? { target: pasadaTarget, root: (ref.program.root || []) } : { target: pasadaTarget, root: [] };
+    const draftProgram = ref ? { target: pasadaTarget, root: (ref.program.root || []) } : null;
     const res = await callAssistant(text, chatHistory.slice(-8), draftProgram);
     typing.remove();
     const reply = res.reply || 'Listo.';
@@ -277,7 +279,15 @@ async function chatSend(text) {
     if (!root.length && link) root = followRoot(link, extractOffset(text));   // el modelo no armó nada pero hay link: lo hacemos igual
     if (root.length) {
       chatAdd('bot', escapeHtml(reply));
-      const strat = { id: null, name: bestName(res.name, root), program: { target: pasadaTarget, root }, tag: 'IA' };
+      let strat;
+      if (ref && ref.id) {
+        // el usuario está trabajando sobre una estrategia existente: los cambios van a ESA estrategia
+        const existTag = (myStrategies.find(s => s.id === ref.id) || {}).tag || 'IA';
+        strat = { id: ref.id, name: res.name || ref.name, program: { target: pasadaTarget, root }, tag: existTag };
+        setAttached({ id: ref.id, name: strat.name, program: strat.program });   // seguir la conversación sobre la versión nueva
+      } else {
+        strat = { id: null, name: bestName(res.name, root), program: { target: pasadaTarget, root }, tag: 'IA' };
+      }
       chatAdd('bot', strategyCardEl(strat));
     } else {
       chatAdd('bot', escapeHtml(reply));
@@ -285,7 +295,9 @@ async function chatSend(text) {
   } catch (err) {
     typing.remove();
     if (ref) {
-      // sin backend, explicamos/describimos la estrategia referenciada con lo que sabemos localmente
+      // sin backend, describimos la estrategia localmente; los cambios necesitan la IA conectada
+      const wantsChange = /mejor|cambi|subí|subi|bajá|baja|ajust|saca|sacá|agreg|pon[eé]|modific/i.test(text);
+      if (wantsChange) chatAdd('bot', `Para aplicar cambios necesito la IA conectada (en el sitio publicado funciona). Mientras tanto, así está <b>${escapeHtml(ref.name)}</b> hoy:`);
       chatAdd('bot', explainStrategyHtml(ref));
     } else if (link) {
       const root = followRoot(link, extractOffset(text));
