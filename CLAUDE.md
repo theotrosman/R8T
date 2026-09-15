@@ -58,7 +58,8 @@ puede previsualizar como Artifact al instante). Migrar a React/Vite es opcional 
 ROADMAP); si se hace, conservar `blocks.js`/`strategies.js`/`simulate.js` casi tal cual.
 
 ```
-index.html            Shell de la app (documento completo standalone)
+index.html            Shell de la app COMPLETA (editor de bloques como pantalla principal).
+v2.html               ★ Shell de la app SIMPLIFICADA "asistente-first" (ver más abajo).
 r8t-app.html          Copia SIN <html>/<head>/<body> para publicar como Artifact de Claude.
                       ⚠ Mantener su <body> sincronizado con index.html (o consolidar).
 assets/
@@ -67,13 +68,17 @@ styles/
   theme.css           Tokens de diseño Real Trends (colores, tipografía, botones)
   app.css             Chrome (rail, topbar, paleta, panel Resultado, presets, chat, modales)
   editor.css          Canvas: cuadrícula, bloques apilables, contenedores condicionales, zoom
+  v2.css              Layout "asistente-first" de v2.html (chat, panel, tarjetas, overlays)
 js/
   icons.js            Set de íconos SVG inline → icon("nombre")
   blocks.js           ★ Registro de bloques + helpers de cálculo (variablePct, priceForMargin…)
   strategies.js       Estrategias (árbol) + SAMPLE_PRODUCTS/SAMPLE_GROUPS + describeProgram()
   editor.js           ★ Motor apilable (objeto RE): árbol, render, inline edit, drag, zoom/pan
   simulate.js         ★ Recorre el árbol y calcula precio/margen + proyección a futuro
-  app.js              ★ Bootstrap: paleta, tabs, destino, explicación, resultado, guardado, chat
+  app.js              ★ Bootstrap de index.html: paleta, tabs, destino, explicación, resultado, chat
+  v2.js               ★ Bootstrap de v2.html (app propia, NO carga app.js): chat-first, "Mis
+                      estrategias", presets recomendados, vista "pasada" simplificada y el editor
+                      de bloques en overlay (reutiliza el motor RE + simulate + describeProgram).
 api/
   assistant.js        Función serverless (Vercel) → proxy a Groq. Devuelve {reply, name, program}
                       y el front construye esa estrategia en el editor. Requiere env GROQ_API_KEY.
@@ -100,6 +105,28 @@ strategies → editor → simulate → app.
   `RE.mergedParams(step)`, `RE.getState`. Un `path` de pila es `'root'` o `'<stepId>.si'` / `'<stepId>.no'`.
 - **Destino:** producto individual o grupo. `resolveTarget()` (strategies.js) devuelve el
   producto representativo + `scale` (nº de productos) para la proyección.
+
+## v2.html — versión simplificada "asistente-first"
+
+Misma marca y mismo motor, pero **el foco se corre del editor de bloques al chatbot**.
+Pensada para el usuario que quiere *decir lo que necesita* y obtener la estrategia lista,
+sin pelearse con bloques. Conceptos:
+
+- **Centro = chat.** El asistente (mismo `/api/assistant`, con fallback local a presets)
+  arma la estrategia y la muestra como **tarjeta** (qué hace en palabras + precio sugerido +
+  acciones: Ver pasada / Guardar / Editar).
+- **Panel derecho = "Mis estrategias"** (guardadas en `localStorage` `r8t.v2.strategies`) +
+  **"Recomendadas"** (los 6 presets de `strategies.js`).
+- **"Pasada"** = vista de correr la estrategia sobre un producto/grupo. **Se sacó a propósito
+  la proyección a 8 semanas y el desglose de impuestos** (era el pedido: simplificar). Queda
+  precio sugerido + diagnóstico + margen/ganancia por unidad, o tabla de precio por producto.
+- **Editor de bloques = overlay "avanzado"** (botón en la topbar o "Editar" en cualquier
+  tarjeta). Reutiliza `RE` tal cual; guarda de vuelta en "Mis estrategias".
+
+`index.html` sigue siendo la app completa (editor como pantalla principal); v2 es una capa
+de entrada más simple sobre el mismo motor. No comparten bootstrap (v2.js ≠ app.js) pero sí
+todo lo demás (blocks/strategies/editor/simulate/icons). Comparten bloques propios
+(`r8t.custom.v2`); v2 también sincroniza el autosave `r8t.save.v3` al guardar en el overlay.
 
 ## Diseño = Real Trends (NO cambiar sin motivo)
 

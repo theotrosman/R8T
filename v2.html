@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>R8T · Asistente de precios — Real Trends</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <meta name="description" content="R8T v2: contale al asistente qué querés lograr con tus precios de Mercado Libre y armá la estrategia al instante. Una función de Real Trends.">
+  <meta name="theme-color" content="#0065F3">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Real Trends">
+  <meta property="og:title" content="R8T · Asistente de precios — Real Trends">
+  <meta property="og:description" content="Decile al asistente qué querés lograr y armá tu estrategia de repricing al instante. Editor de bloques para usuarios avanzados.">
+  <meta property="og:image" content="https://r8-t.vercel.app/assets/og.svg">
+  <meta property="og:url" content="https://r8-t.vercel.app/v2.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="styles/theme.css?v=13">
+  <link rel="stylesheet" href="styles/app.css?v=13">
+  <link rel="stylesheet" href="styles/editor.css?v=13">
+  <link rel="stylesheet" href="styles/v2.css?v=1">
+</head>
+<body>
+<div class="app app--v2">
+
+  <!-- Rail (idéntico al de Real Trends) -->
+  <nav class="rail">
+    <div class="rail__logo" title="Real Trends"><img src="assets/logo-realtrends.svg" alt="Real Trends"></div>
+    <button class="rail__item" title="Inicio" data-ic="home"></button>
+    <button class="rail__item is-active" title="R8T · Asistente" data-ic="chat"></button>
+    <button class="rail__item" title="Análisis" data-ic="chart"></button>
+    <button class="rail__item" title="Precios" data-ic="precio"></button>
+    <button class="rail__item" title="Reglas guardadas" data-ic="book"></button>
+    <div class="rail__spacer"></div>
+    <button class="rail__item" title="Ayuda" data-ic="info"></button>
+    <div class="rail__avatar" title="Mi cuenta">TR</div>
+  </nav>
+
+  <div class="main">
+    <!-- Topbar -->
+    <header class="topbar">
+      <span class="topbar__logo"><img src="assets/logo-realtrends.svg" alt="Real Trends"></span>
+      <span class="topbar__badge">R8T</span>
+      <div class="topbar__sep"></div>
+      <span class="topbar__title">Asistente de precios</span>
+      <div class="topbar__spacer"></div>
+      <div class="topbar__actions">
+        <button class="btn btn--ghost btn--sm" id="btnEditor" data-ic="grid" title="Editor de bloques (avanzado)"><span>Editor de bloques</span></button>
+      </div>
+    </header>
+
+    <!-- Cuerpo: chat (centro) + panel de estrategias (derecha) -->
+    <div class="v2">
+
+      <!-- Chat -->
+      <section class="v2chat">
+        <div class="v2chat__scroll" id="chatScroll">
+
+          <div class="hero" id="chatHero">
+            <div class="hero__badge"><span class="chip chip--teal" data-ic="sparkles">Asistente IA</span></div>
+            <h1 class="hero__title">Decime qué querés lograr con tus precios</h1>
+            <p class="hero__sub">Escribilo en tus palabras —como se lo contarías a un colega— y te armo la estrategia de repricing lista para revisar. Después la editás si querés.</p>
+            <div class="hero__chips">
+              <button data-q="Quiero vender más sin perder plata">Vender más sin perder plata</button>
+              <button data-q="Quiero ganar el BuyBox sin bajar del 12% de margen">Ganar el BuyBox</button>
+              <button data-q="Quiero proteger mi margen aunque suban los impuestos">Proteger mi margen</button>
+              <button data-q="Tengo mucho stock parado y lo quiero liquidar rápido">Liquidar stock parado</button>
+              <button data-q="Que suba el precio si me queda poco stock y lo iguale al competidor si tengo mucho">Precio según stock</button>
+            </div>
+          </div>
+
+          <div class="msgs" id="chatMsgs"></div>
+        </div>
+
+        <div class="composer">
+          <div class="composer__hint" data-ic="info">Contame un objetivo concreto: “bajá 2% pero nunca por debajo del 15% de margen”.</div>
+          <div class="composer__bar">
+            <input id="chatInput" placeholder="Escribí lo que querés lograr con tus precios…" spellcheck="false" autocomplete="off">
+            <button class="btn btn--primary btn--icon" id="chatSend" title="Enviar" data-ic="play"></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel derecho -->
+      <aside class="v2side">
+        <div class="v2side__sec">
+          <div class="v2side__h">Mis estrategias</div>
+          <div class="v2side__body" id="myList"></div>
+        </div>
+        <div class="v2side__sec v2side__sec--reco">
+          <div class="v2side__h">Recomendadas <span class="v2side__hint">plantillas listas para usar</span></div>
+          <div class="v2side__body" id="recoList"></div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============ Sheet: PASADA (correr la estrategia) ============ -->
+<div class="sheet" id="pasadaSheet" hidden>
+  <div class="sheet__card">
+    <header class="sheet__bar">
+      <span class="sheet__ic"><span data-ic="play"></span></span>
+      <div style="flex:1;min-width:0">
+        <div class="sheet__title" id="pasName">Estrategia</div>
+        <div class="sheet__sub"><span class="chip chip--teal" id="pasTag">IA</span> Vista previa de la pasada</div>
+      </div>
+      <button class="sheet__x" id="pasClose" data-ic="close" title="Cerrar"></button>
+    </header>
+    <div class="sheet__scroll" id="pasadaBody"></div>
+    <footer class="sheet__foot">
+      <button class="btn btn--ghost" id="pasEdit" data-ic="edit">Editar en el editor de bloques</button>
+      <div class="topbar__spacer"></div>
+      <button class="btn btn--soft" id="pasSave" data-ic="save">Guardar en mis estrategias</button>
+      <button class="btn btn--primary" id="pasActivate" data-ic="play">Activar pasada</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============ Sheet: EDITOR DE BLOQUES (avanzado) ============ -->
+<div class="sheet sheet--full" id="editorSheet" hidden>
+  <div class="sheet__card sheet__card--full">
+    <header class="sheet__bar">
+      <span class="sheet__ic"><span data-ic="grid"></span></span>
+      <div class="sheet__title">Editor de bloques <span class="chip chip--gray">avanzado</span></div>
+      <div class="topbar__sep"></div>
+      <input class="strat-name" id="edName" value="Mi estrategia" spellcheck="false">
+      <div class="topbar__spacer"></div>
+      <button class="btn btn--ghost btn--sm" id="edNew" data-ic="plus">Nueva</button>
+      <button class="btn btn--ghost btn--sm" id="edCancel" data-ic="close">Cancelar</button>
+      <button class="btn btn--primary btn--sm" id="edSave" data-ic="save">Guardar</button>
+    </header>
+    <div class="edwrap">
+      <!-- Paleta -->
+      <aside class="palette">
+        <div class="palette__head">
+          <div class="palette__title">Bloques</div>
+          <div class="search" data-ic="search"><input id="edPaletteSearch" placeholder="Buscar bloque…" spellcheck="false"></div>
+        </div>
+        <div class="palette__hint">Arrastralos al flujo, o tocá <b>“Agregar bloque”</b> en el lienzo.</div>
+        <div class="palette__list" id="edPaletteList"></div>
+        <div class="palette__foot">
+          <button class="btn btn--soft" id="edCustom" style="width:100%;justify-content:center" data-ic="plus">Crear bloque propio</button>
+        </div>
+      </aside>
+      <!-- Editor -->
+      <section class="editor-col">
+        <div class="explain">
+          <div class="explain__icon" data-ic="book"></div>
+          <div class="explain__body">
+            <div class="explain__title">Qué hace esta estrategia</div>
+            <div class="explain__steps" id="edExplainSteps"></div>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <div class="canvas" id="edCanvas">
+            <div class="world" id="edWorld"><div class="flow" id="edFlow"></div></div>
+          </div>
+          <div class="canvas-controls">
+            <div class="zoom-label" id="zoomLabel">100%</div>
+            <div class="grp">
+              <button id="edZoomIn" title="Acercar" data-ic="plus"></button>
+              <button id="edZoomOut" title="Alejar" data-ic="minus"></button>
+            </div>
+            <div class="grp"><button id="edFit" title="Centrar / encuadrar" data-ic="fit"></button></div>
+            <div class="grp">
+              <button id="edUndo" title="Deshacer (Ctrl+Z)" data-ic="undo"></button>
+              <button id="edRedo" title="Rehacer (Ctrl+Y)" data-ic="redo"></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="js/icons.js?v=13"></script>
+<script src="js/blocks.js?v=13"></script>
+<script src="js/strategies.js?v=13"></script>
+<script src="js/editor.js?v=13"></script>
+<script src="js/simulate.js?v=13"></script>
+<script src="js/v2.js?v=1"></script>
+</body>
+</html>
