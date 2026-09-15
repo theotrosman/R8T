@@ -53,6 +53,11 @@ function saveStrategy(strat) {
 function deleteStrategy(id) { myStrategies = myStrategies.filter(s => s.id !== id); stopRunning(id, true); persistMine(); renderMine(); }
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
+/* ---------- Publicar precio (bloque obligatorio) ---------- */
+function flatBlocks(root) { const out = []; const w = a => a.forEach(s => { out.push(s); if (s.branches) Object.values(s.branches).forEach(w); }); w(root || []); return out; }
+function hasPublish(program) { return flatBlocks((program && program.root) || []).some(s => s.type === 'fijar_precio'); }
+function republishText(program) { const f = flatBlocks((program && program.root) || []).find(s => s.type === 'fijar_precio'); if (!f) return null; return freqTxt(RE.mergedParams(f).frecuencia); }
+
 /* ---------- "Corriendo" (estrategias activadas) ---------- */
 function loadRunning() { try { running = JSON.parse(localStorage.getItem(LS_V2_RUN) || '[]'); } catch (e) { running = []; } }
 function persistRunning() { try { localStorage.setItem(LS_V2_RUN, JSON.stringify(running)); } catch (e) {} }
@@ -359,7 +364,12 @@ function initChat() {
     if (e.key === 'Enter') { chatSend(e.target.value); e.target.value = ''; hideSuggest(); }
   });
   input.addEventListener('blur', () => setTimeout(hideSuggest, 120));
-  document.querySelectorAll('[data-q]').forEach(b => b.addEventListener('click', () => chatSend(b.dataset.q)));
+  // Los ejemplos LLENAN el input (no lo envían) para que el usuario lo edite antes de mandar
+  document.querySelectorAll('[data-q]').forEach(b => b.addEventListener('click', () => {
+    input.value = b.dataset.q; input.focus();
+    try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
+    input.scrollLeft = input.scrollWidth;
+  }));
   document.getElementById('btnResetChat').addEventListener('click', () => {
     const hadMsgs = document.getElementById('chatMsgs').children.length > 0;
     resetChat();
@@ -397,6 +407,15 @@ function renderMine() {
     const runTgt = run ? resolveTarget(run.target) : resolveTarget(pasadaTarget);
     const res = simulate(s.program, runTgt.product, 1);
     const first = (describeProgram(s.program)[0] || {}).text || 'Estrategia personalizada.';
+    let priceLine;
+    if (run) {
+      const rep = republishText(s.program);
+      priceLine = rep
+        ? `${icon('clock')} Republica cada ${rep} · ${escapeHtml(runTgt.label)}`
+        : `<span style="color:var(--warn)">${icon('alert')} Falta el bloque “Publicar precio”</span>`;
+    } else {
+      priceLine = `${icon('precio')} Sugerido ${money(res.price)} · ${escapeHtml(runTgt.product.name)}`;
+    }
     const item = document.createElement('div');
     item.className = 'mitem' + (run ? ' mitem--running' : '');
     item.draggable = true;
@@ -406,7 +425,7 @@ function renderMine() {
       <div class="mitem__main">
         <div class="mitem__name">${escapeHtml(s.name)} ${run ? `<span class="run-badge"><i></i>Corriendo</span>` : `<span class="chip chip--gray">${escapeHtml(s.tag || 'IA')}</span>`}</div>
         <div class="mitem__desc">${escapeHtml(first)}</div>
-        <div class="mitem__price">${icon(run ? 'play' : 'precio')} ${run ? `Corriendo en ${escapeHtml(runTgt.label)} · ` : 'Sugerido '}${money(res.price)}${run ? '' : ` · ${escapeHtml(runTgt.product.name)}`}</div>
+        <div class="mitem__price">${priceLine}</div>
       </div>
       <div class="mitem__tools">
         ${run ? `<button data-a="stop" title="Dejar de correr">${icon('stop')}</button>` : ''}
@@ -640,7 +659,11 @@ function renderEditorExplain() {
   const box = document.getElementById('edExplainSteps');
   const steps = describeProgram(RE.getProgram());
   if (!steps.length) { box.innerHTML = `<div class="explain__empty">Agregá bloques y acá vas a leer, en palabras, exactamente qué hace tu estrategia.</div>`; return; }
-  box.innerHTML = steps.map((s, i) => `<div class="explain__step ${s.cond ? 'cond' : ''}"><span class="explain__num">${i + 1}</span><span>${s.text}</span></div>`).join('');
+  let html = steps.map((s, i) => `<div class="explain__step ${s.cond ? 'cond' : ''}"><span class="explain__num">${i + 1}</span><span>${s.text}</span></div>`).join('');
+  if (!hasPublish(RE.getProgram())) {
+    html += `<div class="explain__step explain__step--warn"><span class="explain__num explain__num--warn">!</span><span><b>Falta “Publicar precio”.</b> Sin ese bloque el repricer calcula pero no aplica el precio en Mercado Libre. Se agrega solo al guardar.</span></div>`;
+  }
+  box.innerHTML = html;
 }
 function onEditorChange() { renderEditorExplain(); }
 
@@ -687,6 +710,8 @@ function initEditorChrome() {
   document.getElementById('edCancel').addEventListener('click', closeEditor);
   document.getElementById('edSave').addEventListener('click', () => {
     const name = document.getElementById('edName').value.trim() || 'Mi estrategia';
+    // "Publicar precio" es obligatorio: sin él el repricer no aplica el precio
+    if (!hasPublish(RE.getProgram())) { RE.addBlock('fijar_precio', 'root'); renderEditorExplain(); toast('Agregué “Publicar precio” al final: es obligatorio para publicar el precio'); }
     const program = RE.getProgram();
     const id = saveStrategy({ id: editorCtx.id, name, program, tag: editorCtx.id ? (myStrategies.find(s => s.id === editorCtx.id) || {}).tag || 'Editada' : 'Editada' });
     editorCtx.id = id;
