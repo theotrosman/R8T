@@ -107,11 +107,13 @@ function extractLink(text) {
   return m ? m[0].replace(/[)\].,]+$/, '') : '';
 }
 /* Programa base para "seguir a esta publicación" */
-function followRoot(link) {
+function followRoot(link, off) {
+  const seguir = { link, modo: 'debajo', offset: 100, offsetUnit: '$', respetarPiso: true };
+  if (off) { seguir.offset = off.offset; seguir.offsetUnit = off.offsetUnit; }
   return [
     { id: uid(), type: 'comision_ml', params: {} },
     { id: uid(), type: 'piso_rentabilidad', params: { min: 10 } },
-    { id: uid(), type: 'seguir_competidor', params: { link, modo: 'debajo', offset: 100, offsetUnit: '$', respetarPiso: true } },
+    { id: uid(), type: 'seguir_competidor', params: seguir },
     { id: uid(), type: 'redondeo', params: { modo: 'psy' } },
     { id: uid(), type: 'fijar_precio', params: { frecuencia: '15' } },
   ];
@@ -130,6 +132,62 @@ function ensureFollowLink(root, link) {
     if (i >= 0) root.splice(i, 0, blk); else root.push(blk);
   }
   return root;
+}
+
+/* ---------- Nombres de estrategia lindos ---------- */
+function cleanName(s) {
+  s = String(s || '').trim().replace(/^["'“”]+|["'“”]+$/g, '');
+  s = s.replace(/([a-záéíóúñ])(\d)/gi, '$1 $2').replace(/(\d)([a-záéíóúñ])/gi, '$1 $2'); // "Bajo0.5%" -> "Bajo 0.5 %"
+  s = s.replace(/(\d)\s+%/g, '$1%').replace(/(\d)\.(\d)/g, '$1,$2');                      // "0.5 %" -> "0,5%"
+  s = s.replace(/\s+/g, ' ').trim();
+  if (s) s = s.charAt(0).toUpperCase() + s.slice(1);
+  return s;
+}
+function isBadName(s) {
+  s = String(s || '').trim();
+  if (!s || s.length < 3) return true;
+  if (/^(estrategia|estrategia sugerida|sin nombre|nueva estrategia|mi estrategia)$/i.test(s)) return true;
+  return false;
+}
+function fmtOffset(p) {
+  const u = p.offsetUnit || '$'; const v = +p.offset || 0;
+  return u === '%' ? String(v).replace('.', ',') + '%' : money(v);
+}
+/* Deriva un título claro a partir de los bloques de la estrategia */
+function nameFromProgram(root) {
+  const flat = []; const walk = a => a.forEach(s => { flat.push(s); if (s.branches) Object.values(s.branches).forEach(walk); }); walk(root || []);
+  const find = t => flat.find(s => s.type === t);
+  let s;
+  if ((s = find('seguir_competidor') || find('igualar_competencia'))) {
+    const p = RE.mergedParams(s);
+    if (p.modo === 'igualar') return 'Igualar al competidor';
+    return `${fmtOffset(p)} ${p.modo === 'encima' ? 'sobre' : 'bajo'} el competidor`;
+  }
+  if (find('ganar_buybox')) return 'Ganar el BuyBox';
+  if (find('liquidacion')) return 'Liquidación de stock';
+  if ((s = find('margen_objetivo'))) return `Margen objetivo ${RE.mergedParams(s).target}%`;
+  if (find('regla_stock')) return 'Precio según stock';
+  if (find('cambio_impuesto')) return 'Blindaje fiscal';
+  if (find('techo_precio')) return 'Rentabilidad máxima';
+  return 'Estrategia de precios';
+}
+/* Elige el mejor nombre: el del bot si sirve, si no uno derivado del programa */
+function bestName(aiName, root) {
+  const clean = cleanName(aiName);
+  const derived = nameFromProgram(root);
+  if (isBadName(clean)) return derived;
+  // si el bot devolvió algo genérico o "pegado", preferimos el derivado
+  if (/^bajo\b/i.test(clean) || clean.split(' ').length < 2) return derived;
+  return clean;
+}
+/* Extrae un offset del texto del usuario (ej "0,5% por debajo", "$200 abajo") */
+function extractOffset(text) {
+  const t = String(text).toLowerCase();
+  let m = t.match(/(\d+(?:[.,]\d+)?)\s*%/);
+  if (m) return { offset: parseFloat(m[1].replace(',', '.')), offsetUnit: '%' };
+  m = t.match(/\$\s*(\d+(?:[.,]\d+)?)/) || t.match(/(\d+(?:[.,]\d+)?)\s*(?:pesos|ars|\$)/);
+  if (m) return { offset: parseFloat(m[1].replace(/\./g, '').replace(',', '.')), offsetUnit: '$' };
+  return null;
 }
 
 const chatHistory = [];
@@ -206,10 +264,10 @@ async function chatSend(text) {
     chatHistory.push({ role: 'assistant', content: reply });
     let root = res.program ? sanitizeProgram(res.program.root || res.program) : [];
     if (root.length && link) ensureFollowLink(root, link);
-    if (!root.length && link) root = followRoot(link);   // el modelo no armó nada pero hay link: lo hacemos igual
+    if (!root.length && link) root = followRoot(link, extractOffset(text));   // el modelo no armó nada pero hay link: lo hacemos igual
     if (root.length) {
       chatAdd('bot', escapeHtml(reply));
-      const strat = { id: null, name: res.name || (link ? 'Seguir competidor' : 'Estrategia sugerida'), program: { target: pasadaTarget, root }, tag: 'IA' };
+      const strat = { id: null, name: bestName(res.name, root), program: { target: pasadaTarget, root }, tag: 'IA' };
       chatAdd('bot', strategyCardEl(strat));
     } else {
       chatAdd('bot', escapeHtml(reply));
@@ -217,8 +275,9 @@ async function chatSend(text) {
   } catch (err) {
     typing.remove();
     if (link) {
-      chatAdd('bot', `No pude conectar con la IA, pero armé una estrategia para <b>seguir esa publicación</b> y quedar por debajo de su precio:`);
-      chatAdd('bot', strategyCardEl({ id: null, name: 'Seguir competidor', program: { target: pasadaTarget, root: followRoot(link) }, tag: 'IA' }));
+      const root = followRoot(link, extractOffset(text));
+      chatAdd('bot', `No pude conectar con la IA, pero armé una estrategia para <b>seguir esa publicación</b> y posicionarte respecto a su precio:`);
+      chatAdd('bot', strategyCardEl({ id: null, name: nameFromProgram(root), program: { target: pasadaTarget, root }, tag: 'IA' }));
     } else {
       chatFallback(text);
     }

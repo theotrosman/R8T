@@ -30,7 +30,7 @@ function note(ctx, level, text) { ctx.notes.push({ level, text }); }
 /* Convierte un valor con unidad (% o $) a pesos, según la base dada */
 function amt(p, key, base) { const u = p[key + 'Unit'] || '$'; const v = +p[key] || 0; return u === '%' ? base * (v / 100) : v; }
 /* Muestra un valor con su unidad como texto */
-function umt(p, key) { const u = p[key + 'Unit'] || '$'; const v = +p[key] || 0; return u === '%' ? `${v}%` : money(v); }
+function umt(p, key) { const u = p[key + 'Unit'] || '$'; const v = +p[key] || 0; return u === '%' ? `${String(v).replace('.', ',')}%` : money(v); }
 /* Acorta un link de ML para mostrarlo (usa el id MLA-… si está) */
 function shortLink(url) {
   if (!url) return 'esa publicación';
@@ -147,14 +147,22 @@ const BLOCKS = {
     desc: 'Seguí una publicación puntual por su link y ajustá tu precio en base al de ESE competidor.',
     params: [
       { key: 'link', label: 'Publicación', type: 'text', value: '', placeholder: 'Pegá el link de la publicación de Mercado Libre…' },
-      { key: 'modo', label: 'Quedar', type: 'select', value: 'debajo', options: [['igualar', 'igualando su precio'], ['debajo', 'por debajo'], ['encima', 'por encima']] },
-      { key: 'offset', label: 'Diferencia', type: 'number', units: ['$', '%'], value: 100, min: 0, max: 10000000, step: 10, showIf: (p) => p.modo !== 'igualar' },
-      { key: 'respetarPiso', label: 'Nunca perforar mi piso', type: 'toggle', value: true },
+      { key: 'accion', label: 'Acción', type: 'select', value: 'posicionar', options: [['posicionar', 'posicionar mi precio'], ['solo_bajar', 'solo si me gana (nunca subir)'], ['alertar', 'solo avisarme (no toco el precio)']] },
+      { key: 'modo', label: 'Quedar', type: 'select', value: 'debajo', options: [['igualar', 'igualando su precio'], ['debajo', 'por debajo'], ['encima', 'por encima']], showIf: (p) => p.accion !== 'alertar' },
+      { key: 'offset', label: 'Diferencia', type: 'number', units: ['$', '%'], value: 100, min: 0, max: 10000000, step: 10, showIf: (p) => p.accion !== 'alertar' && p.modo !== 'igualar' },
+      { key: 'respetarPiso', label: 'Nunca perforar mi piso', type: 'toggle', value: true, showIf: (p) => p.accion !== 'alertar' },
     ],
-    narrate: (p) => `sigo la publicación ${shortLink(p.link)} y ${p.modo === 'igualar' ? 'igualo su precio' : `me pongo ${umt(p, 'offset')} ${p.modo === 'debajo' ? 'por debajo' : 'por encima'}`}`,
+    narrate: (p) => {
+      const l = shortLink(p.link);
+      if (p.accion === 'alertar') return `vigilo la publicación ${l} y me avisan cuando cambia su precio`;
+      const pos = p.modo === 'igualar' ? 'igualo su precio' : `me pongo ${umt(p, 'offset')} ${p.modo === 'debajo' ? 'por debajo' : 'por encima'}`;
+      return `sigo la publicación ${l} y ${pos}${p.accion === 'solo_bajar' ? ', solo si me está ganando' : ''}`;
+    },
     apply: (ctx, p) => {
       if (!p.link) { note(ctx, 'info', 'Pegá el link de la publicación que querés seguir para activar este bloque.'); return; }
       if (!ctx.competitor) { note(ctx, 'info', `Sin lectura de precio de ${shortLink(p.link)} todavía (se toma al conectar con Mercado Libre).`); return; }
+      if (p.accion === 'alertar') { note(ctx, 'info', `Vigilo ${shortLink(p.link)} (${money(ctx.competitor)}): te avisan cuando cambia, sin tocar tu precio.`); return; }
+      if (p.accion === 'solo_bajar' && ctx.competitor >= ctx.price) { note(ctx, 'ok', `Ya le estás ganando a ${shortLink(p.link)} (${money(ctx.competitor)}): no cambio tu precio.`); return; }
       const off = amt(p, 'offset', ctx.competitor);
       let target = ctx.competitor + (p.modo === 'debajo' ? -off : p.modo === 'encima' ? off : 0);
       if (p.respetarPiso && ctx.floor && target < ctx.floor) { target = ctx.floor; note(ctx, 'warn', `La publicación seguida (${money(ctx.competitor)}) está por debajo de tu piso: se frenó en el piso.`); }

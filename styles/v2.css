@@ -28,7 +28,7 @@
 
 /* Mensajes */
 .msgs { max-width: 720px; margin: 8px auto 0; padding: 0 24px; display: flex; flex-direction: column; gap: 12px; }
-.msg { max-width: 86%; padding: 11px 14px; border-radius: 15px; font-size: 14px; line-height: 1.5; }
+.msg { max-width: 86%; padding: 11px 14px; border-radius: 15px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word; }
 .msg--bot { background: var(--rt-surface); border: 1px solid var(--rt-line); align-self: flex-start; border-bottom-left-radius: 5px; box-shadow: var(--shadow-sm); }
 .msg--user { background: var(--rt-blue); color: #fff; align-self: flex-end; border-bottom-right-radius: 5px; }
 .msg b { font-weight: 800; }
