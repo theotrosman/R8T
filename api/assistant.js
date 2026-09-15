@@ -70,7 +70,8 @@ Reglas:
   cambiando SOLO ese valor sobre el "Programa actual"; el resto idéntico.
 - Cuando MODIFIQUES la estrategia, partí del "Programa actual" que te paso y cambiá SOLO lo que el usuario pide;
   el resto dejalo IDÉNTICO. No repitas cambios ya hechos (ej: si el IVA ya está en 24, no le sumes otra vez).
-- Al CREAR una estrategia de cero: empezá con comision_ml e impuestos_generales, incluí piso_rentabilidad y TERMINÁ con fijar_precio.
+- Al CREAR una estrategia de cero: empezá con comision_ml e impuestos_generales, incluí SIEMPRE piso_rentabilidad y TERMINÁ con fijar_precio.
+- OBLIGATORIO: toda estrategia que baje o siga precios (ganar_buybox, seguir_competidor, promo_ml, campana, descuento_volumen, regla_stock) DEBE llevar un piso_rentabilidad ANTES de esos bloques, con min entre 8% y 15% (nunca menos de 8%), salvo que el usuario pida EXPLÍCITAMENTE liquidar/rematar stock (ahí usá liquidacion con su margen tope). El objetivo es que el precio sugerido nunca quede no rentable.
 - Si el usuario PEGA UN LINK de una publicación (contiene "http" o un id "MLA…"), usá el bloque seguir_competidor
   con ese link EXACTO en params.link, y armá la estrategia para actuar en base a esa publicación (por ejemplo:
   comision_ml → piso_rentabilidad → seguir_competidor{link, modo:"debajo"} → redondeo → fijar_precio). Copiá el link

@@ -59,6 +59,23 @@ function flatBlocks(root) { const out = []; const w = a => a.forEach(s => { out.
 function hasPublish(program) { return flatBlocks((program && program.root) || []).some(s => s.type === 'fijar_precio'); }
 function republishText(program) { const f = flatBlocks((program && program.root) || []).find(s => s.type === 'fijar_precio'); if (!f) return null; return freqTxt(RE.mergedParams(f).frecuencia); }
 
+/* ---------- Red de seguridad de rentabilidad ----------
+   La IA no siempre incluye "Piso de rentabilidad". Sin ese bloque, "Ganar el BuyBox"
+   o "Seguir competidor" pueden perforar el margen (el piso solo se respeta si algún
+   bloque previo setea ctx.floor). Garantizamos uno, ubicado después de los bloques de
+   costos/impuestos y antes de los que mueven el precio, para que el cálculo del piso
+   use el costo real. No pisa un piso que la IA ya haya definido.
+   Nota: "Liquidación" baja el piso por su cuenta (hasta su margen tope), así que este
+   piso no rompe esa estrategia. */
+const COST_SETUP_BLOCKS = new Set(['comision_ml', 'costos_operativos', 'impuestos_generales', 'divisas', 'impuesto_importacion', 'retenciones', 'cuotas', 'envio', 'devoluciones']);
+function ensureFloor(root, min = 8) {
+  if (!Array.isArray(root) || flatBlocks(root).some(s => s.type === 'piso_rentabilidad')) return root;
+  let idx = -1;
+  root.forEach((s, i) => { if (COST_SETUP_BLOCKS.has(s.type)) idx = i; });   // después del último bloque de costos/impuestos
+  root.splice(idx + 1, 0, { id: uid(), type: 'piso_rentabilidad', params: { min } });
+  return root;
+}
+
 /* ---------- "Corriendo" (estrategias activadas) ---------- */
 function loadRunning() { try { running = JSON.parse(localStorage.getItem(LS_V2_RUN) || '[]'); } catch (e) { running = []; } }
 function persistRunning() { try { localStorage.setItem(LS_V2_RUN, JSON.stringify(running)); } catch (e) {} }
@@ -250,11 +267,13 @@ function strategyCardEl(strat, opts = {}) {
 
 function chatFallback(text) {
   const l = text.toLowerCase();
-  const id = (l.includes('impuesto') || l.includes('fiscal')) ? 'blindaje_fiscal'
-    : (l.includes('margen') || l.includes('rentab')) ? 'rentabilidad'
+  // De más específico a más genérico: así "ganar el buybox sin bajar del 12% de margen"
+  // cae en buybox (y no en el genérico "margen"), y "proteger mi margen ante impuestos" en fiscal.
+  const id = (l.includes('liquid') || l.includes('rematar') || l.includes('stock parado')) ? 'liquidacion'
     : (l.includes('buybox') || l.includes('catálogo') || l.includes('catalogo')) ? 'buybox'
-    : (l.includes('liquid') || l.includes('rematar')) ? 'liquidacion'
-    : (l.includes('vender') || l.includes('crecer')) ? 'crecimiento' : 'equilibrado';
+    : (l.includes('impuesto') || l.includes('fiscal') || l.includes('iibb') || l.includes('iva')) ? 'blindaje_fiscal'
+    : (l.includes('margen') || l.includes('rentab') || l.includes('proteg')) ? 'rentabilidad'
+    : (l.includes('vender') || l.includes('crecer') || l.includes('visibilidad')) ? 'crecimiento' : 'equilibrado';
   const s = STRAT_MAP[id];
   chatAdd('bot', `No pude conectar con la IA en este momento, pero para lo que me contás te recomiendo <b>${escapeHtml(s.name)}</b>:`);
   chatAdd('bot', strategyCardEl({ id: null, name: s.name, program: (function () { const pg = s.build(); pg.target = pasadaTarget; return pg; })(), tag: s.tag }));
@@ -282,6 +301,7 @@ async function chatSend(text) {
     let root = res.program ? sanitizeProgram(res.program.root || res.program) : [];
     if (root.length && link) ensureFollowLink(root, link);
     if (!root.length && link) root = followRoot(link, extractOffset(text));   // el modelo no armó nada pero hay link: lo hacemos igual
+    if (root.length) ensureFloor(root);   // red de seguridad: nunca una estrategia sin piso de rentabilidad
     if (root.length) {
       chatAdd('bot', escapeHtml(reply));
       let strat;
@@ -737,6 +757,7 @@ function initEditorOnce() {
 function starterRoot() {
   return [
     { id: uid(), type: 'comision_ml', params: {} },
+    { id: uid(), type: 'piso_rentabilidad', params: { min: 10 } },
     { id: uid(), type: 'ganar_buybox', params: { delta: 100, maxIntentos: 8 } },
     { id: uid(), type: 'fijar_precio', params: {} },
   ];
