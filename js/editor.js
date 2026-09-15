@@ -34,7 +34,10 @@ const RE = (() => {
   function mergedParams(step) {
     const d = blockDef(step.type); const out = {};
     (d.params || []).forEach(pr => {
-      out[pr.key] = (step.params && step.params[pr.key] !== undefined) ? step.params[pr.key] : pr.value;
+      let v = (step.params && step.params[pr.key] !== undefined) ? step.params[pr.key] : pr.value;
+      // los campos numéricos SIEMPRE deben ser un número finito (evita NaN por valores vacíos o inválidos)
+      if (pr.type === 'number') { const n = parseFloat(v); v = Number.isFinite(n) ? n : (Number.isFinite(+pr.value) ? +pr.value : 0); }
+      out[pr.key] = v;
       if (pr.units && pr.units.length > 1) { const uk = pr.key + 'Unit'; out[uk] = (step.params && step.params[uk] !== undefined) ? step.params[uk] : pr.units[0]; }
     });
     return out;

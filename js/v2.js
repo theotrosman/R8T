@@ -15,6 +15,7 @@ const LS_CUSTOM  = 'r8t.custom.v2';       // bloques propios (compartido)
 let myStrategies = [];
 let running = [];   // [{ id, target:{mode,id}, since }]
 let chatAttached = null;             // estrategia referenciada en el chat { id, name, program }
+let chatProduct = null;              // producto referenciado en el chat { id, name }
 let suggestItems = [], suggestIdx = 0;
 let pasadaTarget = { mode: 'product', id: 'p1' };
 let editorInited = false, editorCtx = { id: null };
@@ -212,7 +213,7 @@ function chatAdd(role, html) {
 
 /* tarjeta de estrategia dentro del chat / lista */
 function strategyCardEl(strat, opts = {}) {
-  const tgt = resolveTarget(pasadaTarget);
+  const tgt = resolveTarget((strat.program && strat.program.target) || pasadaTarget);
   const res = simulate(strat.program, tgt.product, 1);
   const isUpdate = strat.id && myStrategies.some(s => s.id === strat.id);
   const card = document.createElement('div');
@@ -227,7 +228,7 @@ function strategyCardEl(strat, opts = {}) {
     </div>
     <div class="qh">${explainListHTML(strat.program, 3)}</div>
     <div class="scard__price">
-      <span class="scard__price-l">Precio sugerido · ${escapeHtml(tgt.product.name)}</span>
+      <span class="scard__price-l">${icon(tgt.isGroup ? 'layers' : 'producto')} Precio sugerido · ${escapeHtml(tgt.label)}</span>
       <span class="scard__price-v">${money(res.price)}</span>
     </div>
     <div class="scard__actions">
@@ -263,13 +264,17 @@ async function chatSend(text) {
   if (!text.trim()) return;
   hideHero(); hideSuggest();
   const ref = chatAttached || autoDetectStrategy(text);   // estrategia de la que estamos hablando
-  const userHtml = escapeHtml(text) + (ref ? `<span class="msg__ref">${icon('sparkles')} ${escapeHtml(ref.name)}</span>` : '');
-  chatAdd('user', userHtml);
-  chatHistory.push({ role: 'user', content: text + (ref ? ` (sobre mi estrategia "${ref.name}")` : '') });
+  const prod = chatProduct || autoDetectProduct(text);    // producto sobre el que actuar
+  const target = prod ? { mode: 'product', id: prod.id } : pasadaTarget;
+  let tags = '';
+  if (ref) tags += `<span class="msg__ref msg__ref--strat">${icon('sparkles')} ${escapeHtml(ref.name)}</span>`;
+  if (prod) tags += `<span class="msg__ref msg__ref--prod">${icon('producto')} ${escapeHtml(prod.name)}</span>`;
+  chatAdd('user', escapeHtml(text) + tags);
+  chatHistory.push({ role: 'user', content: text + (ref ? ` (sobre mi estrategia "${ref.name}")` : '') + (prod ? ` (para el producto "${prod.name}")` : '') });
   const link = extractLink(text);
   const typing = chatAdd('bot', '<span class="muted">Pensando…</span>');
   try {
-    const draftProgram = ref ? { target: pasadaTarget, root: (ref.program.root || []) } : null;
+    const draftProgram = ref ? { target, root: (ref.program.root || []) } : null;
     const res = await callAssistant(text, chatHistory.slice(-8), draftProgram);
     typing.remove();
     const reply = res.reply || 'Listo.';
@@ -310,41 +315,63 @@ async function chatSend(text) {
 }
 function hideHero() { const h = document.getElementById('chatHero'); if (h) h.hidden = true; }
 
-/* ---------- Estrategia adjunta (referenciada) ---------- */
+/* ---------- Referencias adjuntas (estrategia y/o producto) ---------- */
+function focusInput() { document.getElementById('chatInput').focus(); }
 function setAttached(strat) { chatAttached = strat ? { id: strat.id, name: strat.name, program: strat.program } : null; renderAttach(); }
+function setProduct(p) { chatProduct = p ? { id: p.id, name: p.name } : null; if (p) pasadaTarget = { mode: 'product', id: p.id }; renderAttach(); }
 function renderAttach() {
   const box = document.getElementById('chatAttach');
-  if (!chatAttached) { box.hidden = true; box.innerHTML = ''; return; }
+  if (!chatAttached && !chatProduct) { box.hidden = true; box.innerHTML = ''; return; }
   box.hidden = false;
-  box.innerHTML = `<span class="attach-lbl">Hablando de</span><span class="attach-chip">${icon('sparkles')}<b>${escapeHtml(chatAttached.name)}</b><button data-x title="Quitar">${icon('close')}</button></span>`;
-  box.querySelector('[data-x]').addEventListener('click', () => { setAttached(null); document.getElementById('chatInput').focus(); });
+  let html = `<span class="attach-lbl">Hablando de</span>`;
+  if (chatAttached) html += `<span class="attach-chip attach-chip--strat">${icon('sparkles')}<b>${escapeHtml(chatAttached.name)}</b><button data-x="strat" title="Quitar">${icon('close')}</button></span>`;
+  if (chatProduct) html += `<span class="attach-chip attach-chip--prod">${icon('producto')}<b>${escapeHtml(chatProduct.name)}</b><button data-x="prod" title="Quitar">${icon('close')}</button></span>`;
+  box.innerHTML = html;
+  const bs = box.querySelector('[data-x="strat"]'); if (bs) bs.addEventListener('click', () => { setAttached(null); focusInput(); });
+  const bp = box.querySelector('[data-x="prod"]'); if (bp) bp.addEventListener('click', () => { setProduct(null); focusInput(); });
 }
-/* ---------- Autocompletado con @ ---------- */
+/* ---------- Autocompletado con @ (estrategias + productos, separados) ---------- */
 function hideSuggest() { suggestItems = []; const b = document.getElementById('chatSuggest'); if (b) { b.hidden = true; b.innerHTML = ''; } }
 function renderSuggest() {
   const b = document.getElementById('chatSuggest');
-  b.innerHTML = suggestItems.map((s, i) => `<button class="suggest__item ${i === suggestIdx ? 'on' : ''}" data-i="${i}">${icon('sparkles')}<span>${escapeHtml(s.name)}</span><i>${escapeHtml(s.tag || 'IA')}</i></button>`).join('');
+  let html = '', lastKind = null;
+  suggestItems.forEach((it, i) => {
+    if (it.kind !== lastKind) { html += `<div class="suggest__cat">${it.kind === 'strat' ? 'Estrategias' : 'Productos'}</div>`; lastKind = it.kind; }
+    const meta = it.kind === 'strat' ? (it.ref.tag || 'IA') : money(it.ref.price);
+    html += `<button class="suggest__item ${i === suggestIdx ? 'on' : ''}" data-i="${i}">
+      <span class="suggest__ic suggest__ic--${it.kind}">${icon(it.kind === 'strat' ? 'sparkles' : 'producto')}</span>
+      <span>${escapeHtml(it.name)}</span><i>${escapeHtml(meta)}</i></button>`;
+  });
+  b.innerHTML = html;
   b.querySelectorAll('.suggest__item').forEach(btn => btn.addEventListener('mousedown', e => { e.preventDefault(); pickSuggest(+btn.dataset.i); }));
 }
 function updateSuggest() {
   const input = document.getElementById('chatInput');
   const m = input.value.match(/@([^@]*)$/);
-  if (!m || !myStrategies.length) { hideSuggest(); return; }
+  if (!m) { hideSuggest(); return; }
   const q = m[1].trim().toLowerCase();
-  suggestItems = myStrategies.filter(s => s.name.toLowerCase().includes(q)).slice(0, 6);
+  const strat = myStrategies.filter(s => s.name.toLowerCase().includes(q)).slice(0, 5).map(s => ({ kind: 'strat', name: s.name, ref: s }));
+  const prod = SAMPLE_PRODUCTS.filter(p => p.name.toLowerCase().includes(q)).slice(0, 5).map(p => ({ kind: 'prod', name: p.name, ref: p }));
+  suggestItems = [...strat, ...prod];
   if (!suggestItems.length) { hideSuggest(); return; }
   suggestIdx = 0; renderSuggest(); document.getElementById('chatSuggest').hidden = false;
 }
 function pickSuggest(i) {
-  const s = suggestItems[i]; if (!s) return;
+  const it = suggestItems[i]; if (!it) return;
   const input = document.getElementById('chatInput');
   input.value = input.value.replace(/@[^@]*$/, '');
-  setAttached(s); hideSuggest(); input.focus();
+  if (it.kind === 'strat') setAttached(it.ref); else setProduct(it.ref);
+  hideSuggest(); input.focus();
 }
 /* detecta una estrategia mencionada por nombre en el texto (si no hay adjunto) */
 function autoDetectStrategy(text) {
   const t = text.toLowerCase(); let best = null;
   myStrategies.forEach(s => { const n = (s.name || '').toLowerCase(); if (n.length >= 3 && t.includes(n) && (!best || n.length > best.name.length)) best = s; });
+  return best;
+}
+function autoDetectProduct(text) {
+  const t = text.toLowerCase(); let best = null;
+  SAMPLE_PRODUCTS.forEach(p => { const n = (p.name || '').toLowerCase(); if (n.length >= 4 && t.includes(n) && (!best || n.length > best.name.length)) best = p; });
   return best;
 }
 function explainStrategyHtml(strat) {
@@ -359,7 +386,7 @@ function resetChat() {
   const hero = document.getElementById('chatHero'); if (hero) hero.hidden = false;
   const input = document.getElementById('chatInput'); if (input) input.value = '';
   const scroll = document.getElementById('chatScroll'); if (scroll) scroll.scrollTop = 0;
-  setAttached(null); hideSuggest();
+  setAttached(null); setProduct(null); hideSuggest();
 }
 function initChat() {
   const input = document.getElementById('chatInput');
@@ -416,17 +443,17 @@ function renderMine() {
   box.innerHTML = '';
   myStrategies.forEach(s => {
     const run = running.find(r => r.id === s.id);
-    const runTgt = run ? resolveTarget(run.target) : resolveTarget(pasadaTarget);
-    const res = simulate(s.program, runTgt.product, 1);
+    const ownTgt = resolveTarget((run && run.target) || s.program.target || pasadaTarget);
+    const res = simulate(s.program, ownTgt.product, 1);
     const first = (describeProgram(s.program)[0] || {}).text || 'Estrategia personalizada.';
     let priceLine;
     if (run) {
       const rep = republishText(s.program);
       priceLine = rep
-        ? `${icon('clock')} Reajusta el precio cada ${rep} · ${escapeHtml(runTgt.label)}`
+        ? `${icon('clock')} Reajusta el precio cada ${rep}`
         : `<span style="color:var(--warn)">${icon('alert')} Falta el bloque “Publicar precio”</span>`;
     } else {
-      priceLine = `${icon('precio')} Sugerido ${money(res.price)} · ${escapeHtml(runTgt.product.name)}`;
+      priceLine = `${icon('precio')} Sugerido ${money(res.price)}`;
     }
     const item = document.createElement('div');
     item.className = 'mitem' + (run ? ' mitem--running' : '');
@@ -436,6 +463,7 @@ function renderMine() {
     item.innerHTML = `
       <div class="mitem__main">
         <div class="mitem__name">${escapeHtml(s.name)} ${run ? `<span class="run-badge"><i></i>Corriendo</span>` : `<span class="chip chip--gray">${escapeHtml(s.tag || 'IA')}</span>`}</div>
+        <div class="mitem__for">${icon(ownTgt.isGroup ? 'layers' : 'producto')} ${escapeHtml(ownTgt.label)}</div>
         <div class="mitem__desc">${escapeHtml(first)}</div>
         <div class="mitem__price">${priceLine}</div>
       </div>
@@ -496,6 +524,8 @@ function targetPickerHTML() {
 }
 function openPasada(strat) {
   pasadaStrat = strat;
+  // previsualizar sobre el producto/grupo propio de la estrategia
+  if (strat && strat.program && strat.program.target) pasadaTarget = clone(strat.program.target);
   document.getElementById('pasadaSheet').hidden = false;
   document.body.classList.add('sheet-open');
   renderPasada();
@@ -569,13 +599,14 @@ function renderPasada() {
   actBtn.classList.toggle('btn--danger', run);
   actBtn.innerHTML = run ? `${icon('stop')} Detener pasada` : `${icon('play')} Activar pasada`;
 
-  // wiring del selector de destino
+  // wiring del selector de destino (queda guardado como destino propio de la estrategia)
+  const syncTarget = () => { if (pasadaStrat && pasadaStrat.program) pasadaStrat.program.target = clone(pasadaTarget); };
   pane.querySelectorAll('.tpick__seg button').forEach(b => b.addEventListener('click', () => {
     const mode = b.dataset.mode; const first = (mode === 'group' ? SAMPLE_GROUPS : SAMPLE_PRODUCTS)[0];
-    pasadaTarget = { mode, id: first.id }; renderPasada();
+    pasadaTarget = { mode, id: first.id }; syncTarget(); renderPasada();
   }));
   const sel = pane.querySelector('#pasSel');
-  if (sel) sel.addEventListener('change', () => { pasadaTarget = { mode: pasadaTarget.mode, id: sel.value }; renderPasada(); });
+  if (sel) sel.addEventListener('change', () => { pasadaTarget = { mode: pasadaTarget.mode, id: sel.value }; syncTarget(); renderPasada(); });
 }
 
 function initPasada() {

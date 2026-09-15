@@ -64,25 +64,37 @@
 /* Chip de estrategia adjunta */
 .composer__attach { max-width: 720px; margin: 0 auto 8px; display: flex; align-items: center; gap: 8px; }
 .attach-lbl { font-size: 11px; font-weight: 700; color: var(--rt-gray-400); }
-.attach-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--rt-blue-050); color: var(--rt-blue); border: 1px solid color-mix(in srgb, var(--rt-blue) 26%, var(--rt-line)); border-radius: var(--r-pill); padding: 4px 6px 4px 10px; font-size: 12.5px; }
+.attach-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--r-pill); padding: 4px 6px 4px 10px; font-size: 12.5px; border: 1px solid transparent; }
 .attach-chip svg { width: 13px; height: 13px; }
 .attach-chip b { font-weight: 800; }
-.attach-chip button { border: none; background: transparent; color: var(--rt-blue); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; }
+.attach-chip button { border: none; background: transparent; color: inherit; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; }
 .attach-chip button svg { width: 13px; height: 13px; }
-.attach-chip button:hover { background: color-mix(in srgb, var(--rt-blue) 16%, #fff); }
+.attach-chip--strat { background: var(--rt-blue-050); color: var(--rt-blue); border-color: color-mix(in srgb, var(--rt-blue) 26%, var(--rt-line)); }
+.attach-chip--strat button:hover { background: color-mix(in srgb, var(--rt-blue) 16%, #fff); }
+.attach-chip--prod { background: var(--rt-teal-050); color: var(--rt-teal-600); border-color: color-mix(in srgb, var(--rt-teal-600) 32%, var(--rt-line)); }
+.attach-chip--prod button:hover { background: color-mix(in srgb, var(--rt-teal-600) 14%, #fff); }
 
 /* Dropdown de sugerencias (@) */
 .suggest { position: absolute; left: 0; right: 48px; bottom: calc(100% + 8px); background: #fff; border: 1px solid var(--rt-line); border-radius: 13px; box-shadow: var(--shadow-lg); padding: 6px; z-index: 30; max-height: 240px; overflow: auto; }
+.suggest__cat { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--rt-gray-400); padding: 8px 10px 4px; }
 .suggest__item { display: flex; align-items: center; gap: 9px; width: 100%; border: none; background: transparent; padding: 8px 10px; border-radius: 9px; text-align: left; }
-.suggest__item svg { width: 15px; height: 15px; color: var(--rt-navy); flex: none; }
-.suggest__item span { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--rt-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggest__ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; flex: none; color: #fff; }
+.suggest__ic svg { width: 14px; height: 14px; }
+.suggest__ic--strat { background: var(--rt-navy); }
+.suggest__ic--prod { background: var(--rt-teal); color: #08312a; }
+.suggest__item > span:not(.suggest__ic) { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--rt-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .suggest__item i { font-size: 10.5px; font-weight: 700; font-style: normal; color: var(--rt-gray-400); }
 .suggest__item.on, .suggest__item:hover { background: var(--rt-blue-050); }
-.suggest__item.on span { color: var(--rt-blue); }
+.suggest__item.on > span:not(.suggest__ic) { color: var(--rt-blue); }
 
 /* Tag de estrategia dentro del mensaje del usuario */
-.msg__ref { display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; padding: 2px 9px; border-radius: var(--r-pill); background: rgba(255,255,255,.22); font-size: 11.5px; font-weight: 800; }
+.msg__ref { display: inline-flex; align-items: center; gap: 5px; margin: 7px 5px 0 0; padding: 2px 9px; border-radius: var(--r-pill); background: rgba(255,255,255,.22); font-size: 11.5px; font-weight: 800; }
 .msg__ref svg { width: 12px; height: 12px; }
+.msg__ref--prod { background: rgba(255,255,255,.32); }
+
+/* "Actúa sobre" en la lista de estrategias */
+.mitem__for { display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 11px; font-weight: 800; color: var(--rt-teal-600); }
+.mitem__for svg { width: 13px; height: 13px; }
 
 /* Zona de drop del chat */
 .v2chat.dropping { outline: 2px dashed var(--rt-blue); outline-offset: -10px; background: var(--rt-blue-050); }

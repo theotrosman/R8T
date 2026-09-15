@@ -35,9 +35,10 @@ function simulate(program, product, scale = 1) {
   const ctx = seedCtx(product);
   execStack(program.root || [], ctx, 0);
 
-  const price = Math.max(0, ctx.price || product.price);
-  const varPct = variablePct(ctx);
-  const net = price - price * (varPct / 100) - fixedCost(ctx);   // ganancia por unidad
+  const fin = (v, d = 0) => Number.isFinite(+v) ? +v : d;
+  const price = Math.max(0, fin(ctx.price, fin(product.price)));
+  const varPct = fin(variablePct(ctx));
+  const net = fin(price - price * (varPct / 100) - fixedCost(ctx));   // ganancia por unidad
   const margin = price > 0 ? (net / price) * 100 : -999;
   const competitor = ctx.competitor || product.competitor;
   const diff = price - competitor;
