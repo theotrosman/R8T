@@ -90,6 +90,20 @@
 .mitem__tools button svg { width: 15px; height: 15px; }
 .mitem__tools button:hover { background: var(--rt-blue-050); color: var(--rt-blue); }
 .mitem__tools button[data-a="del"]:hover { background: var(--danger-050); color: var(--danger); }
+.mitem__tools button[data-a="stop"] { background: var(--rt-blue-050); color: var(--rt-blue); }
+.mitem__tools button[data-a="stop"]:hover { background: var(--danger-050); color: var(--danger); }
+
+/* Estrategia "corriendo" (activada) */
+.mitem--running { background: var(--rt-blue-050); border-color: color-mix(in srgb, var(--rt-blue) 32%, var(--rt-line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--rt-blue) 12%, transparent); }
+.mitem--running:hover { border-color: var(--rt-blue); }
+.mitem--running .mitem__price { color: var(--rt-blue); }
+.run-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--rt-blue); background: #fff; border: 1px solid color-mix(in srgb, var(--rt-blue) 30%, var(--rt-line)); border-radius: var(--r-pill); padding: 2px 8px 2px 6px; }
+.run-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--rt-blue); box-shadow: 0 0 0 0 color-mix(in srgb, var(--rt-blue) 60%, transparent); animation: runPulse 1.6s ease-out infinite; }
+@keyframes runPulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--rt-blue) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* Botón detener (contrapartida de Activar) */
+.btn--danger { background: var(--danger-050); color: var(--danger); border-color: transparent; box-shadow: none; }
+.btn--danger:hover { background: color-mix(in srgb, var(--danger) 16%, #fff); }
 
 /* Recomendadas (compactas) */
 .reco { border: 1px solid var(--rt-line); border-radius: 13px; padding: 12px; margin-bottom: 9px; cursor: pointer; background: #fff; transition: border-color .15s, box-shadow .15s, transform .08s; }

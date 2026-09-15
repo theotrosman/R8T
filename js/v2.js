@@ -9,9 +9,11 @@
 window.CUSTOM_BLOCKS = window.CUSTOM_BLOCKS || {};
 const LS_V2      = 'r8t.v2.strategies';   // estrategias guardadas del usuario
 const LS_V2_SAVE = 'r8t.save.v3';         // compartido con el editor completo (index.html)
+const LS_V2_RUN  = 'r8t.v2.running';      // estrategias que están "corriendo" (activadas)
 const LS_CUSTOM  = 'r8t.custom.v2';       // bloques propios (compartido)
 
 let myStrategies = [];
+let running = [];   // [{ id, target:{mode,id}, since }]
 let pasadaTarget = { mode: 'product', id: 'p1' };
 let editorInited = false, editorCtx = { id: null };
 
@@ -46,8 +48,20 @@ function saveStrategy(strat) {
   persistMine(); renderMine();
   return strat.id;
 }
-function deleteStrategy(id) { myStrategies = myStrategies.filter(s => s.id !== id); persistMine(); renderMine(); }
+function deleteStrategy(id) { myStrategies = myStrategies.filter(s => s.id !== id); stopRunning(id, true); persistMine(); renderMine(); }
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+/* ---------- "Corriendo" (estrategias activadas) ---------- */
+function loadRunning() { try { running = JSON.parse(localStorage.getItem(LS_V2_RUN) || '[]'); } catch (e) { running = []; } }
+function persistRunning() { try { localStorage.setItem(LS_V2_RUN, JSON.stringify(running)); } catch (e) {} }
+function isRunning(id) { return !!id && running.some(r => r.id === id); }
+function startRunning(id, target) {
+  if (!id) return;
+  const r = running.find(x => x.id === id);
+  if (r) r.target = clone(target); else running.push({ id, target: clone(target), since: Date.now() });
+  persistRunning();
+}
+function stopRunning(id, silent) { const before = running.length; running = running.filter(r => r.id !== id); if (running.length !== before) persistRunning(); if (!silent) renderMine(); }
 
 /* ============================================================
    Explicación en lenguaje natural (reutiliza describeProgram)
@@ -233,24 +247,28 @@ function renderMine() {
   }
   box.innerHTML = '';
   myStrategies.forEach(s => {
-    const tgt = resolveTarget(pasadaTarget);
-    const res = simulate(s.program, tgt.product, 1);
+    const run = running.find(r => r.id === s.id);
+    const runTgt = run ? resolveTarget(run.target) : resolveTarget(pasadaTarget);
+    const res = simulate(s.program, runTgt.product, 1);
     const first = (describeProgram(s.program)[0] || {}).text || 'Estrategia personalizada.';
     const item = document.createElement('div');
-    item.className = 'mitem';
+    item.className = 'mitem' + (run ? ' mitem--running' : '');
     item.innerHTML = `
       <div class="mitem__main">
-        <div class="mitem__name">${escapeHtml(s.name)} <span class="chip chip--gray">${escapeHtml(s.tag || 'IA')}</span></div>
+        <div class="mitem__name">${escapeHtml(s.name)} ${run ? `<span class="run-badge"><i></i>Corriendo</span>` : `<span class="chip chip--gray">${escapeHtml(s.tag || 'IA')}</span>`}</div>
         <div class="mitem__desc">${escapeHtml(first)}</div>
-        <div class="mitem__price">${icon('precio')} Sugerido ${money(res.price)} · ${escapeHtml(tgt.product.name)}</div>
+        <div class="mitem__price">${icon(run ? 'play' : 'precio')} ${run ? `Corriendo en ${escapeHtml(runTgt.label)} · ` : 'Sugerido '}${money(res.price)}${run ? '' : ` · ${escapeHtml(runTgt.product.name)}`}</div>
       </div>
       <div class="mitem__tools">
+        ${run ? `<button data-a="stop" title="Dejar de correr">${icon('stop')}</button>` : ''}
         <button data-a="edit" title="Editar en el editor de bloques">${icon('edit')}</button>
         <button data-a="del" title="Eliminar">${icon('trash')}</button>
       </div>`;
     item.querySelector('.mitem__main').addEventListener('click', () => openPasada(clone(s)));
     item.querySelector('[data-a="edit"]').addEventListener('click', e => { e.stopPropagation(); openEditor(clone(s)); });
     item.querySelector('[data-a="del"]').addEventListener('click', e => { e.stopPropagation(); if (confirm(`¿Eliminar "${s.name}"?`)) { deleteStrategy(s.id); toast('Estrategia eliminada'); } });
+    const stop = item.querySelector('[data-a="stop"]');
+    if (stop) stop.addEventListener('click', e => { e.stopPropagation(); stopRunning(s.id); toast(`Dejaste de correr "${s.name}"`); });
     box.appendChild(item);
   });
 }
@@ -366,6 +384,10 @@ function renderPasada() {
   document.getElementById('pasTag').textContent = strat.tag || 'IA';
   const saveBtn = document.getElementById('pasSave');
   saveBtn.style.display = saved ? 'none' : '';
+  const actBtn = document.getElementById('pasActivate');
+  const run = isRunning(strat.id);
+  actBtn.classList.toggle('btn--danger', run);
+  actBtn.innerHTML = run ? `${icon('stop')} Detener pasada` : `${icon('play')} Activar pasada`;
 
   // wiring del selector de destino
   pane.querySelectorAll('.tpick__seg button').forEach(b => b.addEventListener('click', () => {
@@ -385,11 +407,19 @@ function initPasada() {
     pasadaStrat.id = id; toast(`"${pasadaStrat.name}" guardada`, 'ok'); renderPasada();
   });
   document.getElementById('pasActivate').addEventListener('click', () => {
+    // si ya está corriendo, el botón detiene
+    if (isRunning(pasadaStrat.id)) { stopRunning(pasadaStrat.id); toast(`Dejaste de correr "${pasadaStrat.name}"`); renderPasada(); return; }
     const tgt = resolveTarget(pasadaTarget);
     const res = simulate(pasadaStrat.program, tgt.product, tgt.scale);
     if (!res.reached) { toast('La estrategia no publica precio: agregá el bloque “Publicar precio” en el editor'); return; }
     if (res.margin < 0) { toast('El margen queda negativo: revisá la estrategia antes de activar'); return; }
-    toast(`Pasada activada para ${tgt.isGroup ? tgt.count + ' productos' : tgt.label}`, 'ok');
+    // se guarda (si hace falta) para que quede en "Mis estrategias" y se marca corriendo
+    const id = saveStrategy({ id: pasadaStrat.id || null, name: pasadaStrat.name, program: pasadaStrat.program, tag: pasadaStrat.tag });
+    pasadaStrat.id = id;
+    startRunning(id, pasadaTarget);
+    renderMine();
+    toast(`Corriendo "${pasadaStrat.name}" en ${tgt.isGroup ? tgt.count + ' productos' : tgt.label}`, 'ok');
+    closePasada();
   });
 }
 
@@ -569,7 +599,7 @@ function openCustomModal() {
    INIT
    ============================================================ */
 function init() {
-  initIcons(); loadCustom(); loadMine();
+  initIcons(); loadCustom(); loadMine(); loadRunning();
   initChat(); renderMine(); renderReco(); initPasada(); initEditorChrome();
 
   document.getElementById('btnEditor').addEventListener('click', () => openEditor(null));

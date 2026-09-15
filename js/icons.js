@@ -59,6 +59,8 @@ const ICONS = {
   redo:        '<path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h4"/>',
   coins:       '<circle cx="9" cy="9" r="6"/><path d="M15.5 4.2a6 6 0 0 1 0 15.6M9 6.5v5M6.7 7.8h3.1a1.4 1.4 0 0 1 0 2.8H8a1.4 1.4 0 0 0 0 2.8h3"/>',
   stock:       '<path d="M3 7 12 3l9 4v10l-9 4-9-4z"/><path d="M12 12v9M3 7l9 5 9-5"/>',
+  stop:        '<rect x="6" y="6" width="12" height="12" rx="2.5"/>',
+  pause:       '<path d="M8 5v14M16 5v14"/>',
 };
 
 function icon(name, cls) {
