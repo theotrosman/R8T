@@ -294,7 +294,15 @@ async function chatSend(text) {
   const typing = chatAdd('bot', '<span class="muted">Pensando…</span>');
   try {
     const draftProgram = ref ? { target, root: (ref.program.root || []) } : null;
-    const res = await callAssistant(text, chatHistory.slice(-8), draftProgram);
+    // Instrucción explícita cuando hay estrategia/producto adjuntos: evita que el modelo
+    // pida "adjuntá la estrategia" cuando ya está adjunta, o dude de qué producto se trata.
+    let assistMsg = text;
+    const hints = [];
+    if (ref) hints.push(`YA adjunté la estrategia "${ref.name}" (viene en "Programa actual"): trabajá SOBRE ella, NO pidas que la adjunte`);
+    if (prod && ref) hints.push(`adaptala al producto "${prod.name}"`);
+    else if (prod) hints.push(`creá una estrategia nueva para el producto "${prod.name}"`);
+    if (hints.length) assistMsg = `${text}\n\n[Contexto: ${hints.join('; ')}.]`;
+    const res = await callAssistant(assistMsg, chatHistory.slice(-8), draftProgram);
     typing.remove();
     const reply = res.reply || 'Listo.';
     chatHistory.push({ role: 'assistant', content: reply });
