@@ -423,7 +423,7 @@ function renderMine() {
     if (run) {
       const rep = republishText(s.program);
       priceLine = rep
-        ? `${icon('clock')} Republica cada ${rep} · ${escapeHtml(runTgt.label)}`
+        ? `${icon('clock')} Reajusta el precio cada ${rep} · ${escapeHtml(runTgt.label)}`
         : `<span style="color:var(--warn)">${icon('alert')} Falta el bloque “Publicar precio”</span>`;
     } else {
       priceLine = `${icon('precio')} Sugerido ${money(res.price)} · ${escapeHtml(runTgt.product.name)}`;
