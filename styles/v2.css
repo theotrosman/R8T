@@ -59,7 +59,9 @@
 .composer__hint svg { width: 14px; height: 14px; flex: none; color: var(--rt-gray-300); }
 .composer__hint b { color: var(--rt-blue); font-weight: 800; }
 .composer__wrap { position: relative; max-width: 720px; margin: 0 auto; }
-.composer__bar { display: flex; gap: 9px; align-items: center; }
+.composer__bar { display: flex; gap: 9px; align-items: flex-end; }
+.composer__bar textarea { flex: 1; border: 1px solid var(--rt-line); border-radius: 20px; padding: 11px 16px; font-size: 14px; font-family: inherit; line-height: 1.45; outline: none; background: var(--rt-surface-2); transition: border-color .15s, background .15s; resize: none; overflow-y: auto; min-height: 44px; max-height: 140px; }
+.composer__bar textarea:focus { border-color: var(--rt-blue); background: #fff; box-shadow: 0 0 0 3px var(--rt-blue-050); }
 
 /* Chip de estrategia adjunta */
 .composer__attach { max-width: 720px; margin: 0 auto 8px; display: flex; align-items: center; gap: 8px; }
@@ -93,15 +95,13 @@
 .msg__ref--prod { background: rgba(255,255,255,.32); }
 
 /* "Actúa sobre" en la lista de estrategias */
-.mitem__for { display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 11px; font-weight: 800; color: var(--rt-teal-600); }
-.mitem__for svg { width: 13px; height: 13px; }
+.mitem__for { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 11.5px; font-weight: 600; color: var(--rt-gray); line-height: 1.4; }
+.mitem__for svg { width: 13px; height: 13px; flex: none; color: var(--rt-teal-600); }
 
 /* Zona de drop del chat */
 .v2chat.dropping { outline: 2px dashed var(--rt-blue); outline-offset: -10px; background: var(--rt-blue-050); }
 .mitem[draggable="true"] { cursor: grab; }
 .mitem.is-dragging { opacity: .5; }
-.composer__bar input { flex: 1; border: 1px solid var(--rt-line); border-radius: var(--r-pill); padding: 12px 18px; font-size: 14px; outline: none; background: var(--rt-surface-2); transition: border-color .15s, background .15s; }
-.composer__bar input:focus { border-color: var(--rt-blue); background: #fff; box-shadow: 0 0 0 3px var(--rt-blue-050); }
 .composer__bar .btn--icon { width: 44px; height: 44px; border-radius: 50%; flex: none; padding: 0; justify-content: center; }
 .composer__bar .btn--icon svg { position: relative; left: 1px; } /* centrado óptico del triángulo ▶ */
 

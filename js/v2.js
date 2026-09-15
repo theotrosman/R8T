@@ -317,6 +317,7 @@ function hideHero() { const h = document.getElementById('chatHero'); if (h) h.hi
 
 /* ---------- Referencias adjuntas (estrategia y/o producto) ---------- */
 function focusInput() { document.getElementById('chatInput').focus(); }
+function autoGrow(el) { if (!el) el = document.getElementById('chatInput'); el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px'; }
 function setAttached(strat) { chatAttached = strat ? { id: strat.id, name: strat.name, program: strat.program } : null; renderAttach(); }
 function setProduct(p) { chatProduct = p ? { id: p.id, name: p.name } : null; if (p) pasadaTarget = { mode: 'product', id: p.id }; renderAttach(); }
 function renderAttach() {
@@ -384,14 +385,15 @@ function resetChat() {
   chatHistory.length = 0;
   document.getElementById('chatMsgs').innerHTML = '';
   const hero = document.getElementById('chatHero'); if (hero) hero.hidden = false;
-  const input = document.getElementById('chatInput'); if (input) input.value = '';
+  const input = document.getElementById('chatInput'); if (input) { input.value = ''; autoGrow(input); }
   const scroll = document.getElementById('chatScroll'); if (scroll) scroll.scrollTop = 0;
   setAttached(null); setProduct(null); hideSuggest();
 }
 function initChat() {
   const input = document.getElementById('chatInput');
-  document.getElementById('chatSend').addEventListener('click', () => { chatSend(input.value); input.value = ''; });
-  input.addEventListener('input', updateSuggest);
+  const submit = () => { chatSend(input.value); input.value = ''; hideSuggest(); autoGrow(input); };
+  document.getElementById('chatSend').addEventListener('click', submit);
+  input.addEventListener('input', () => { updateSuggest(); autoGrow(input); });
   input.addEventListener('keydown', e => {
     const b = document.getElementById('chatSuggest');
     if (b && !b.hidden && suggestItems.length) {
@@ -400,14 +402,15 @@ function initChat() {
       if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickSuggest(suggestIdx); return; }
       if (e.key === 'Escape') { e.preventDefault(); hideSuggest(); return; }
     }
-    if (e.key === 'Enter') { chatSend(e.target.value); e.target.value = ''; hideSuggest(); }
+    // Enter envía; Shift+Enter hace salto de línea (como en cualquier chat)
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
   });
   input.addEventListener('blur', () => setTimeout(hideSuggest, 120));
   // Los ejemplos LLENAN el input (no lo envían) para que el usuario lo edite antes de mandar
   document.querySelectorAll('[data-q]').forEach(b => b.addEventListener('click', () => {
     input.value = b.dataset.q; input.focus();
     try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
-    input.scrollLeft = input.scrollWidth;
+    autoGrow(input);
   }));
   document.getElementById('btnResetChat').addEventListener('click', () => {
     const hadMsgs = document.getElementById('chatMsgs').children.length > 0;
@@ -445,7 +448,9 @@ function renderMine() {
     const run = running.find(r => r.id === s.id);
     const ownTgt = resolveTarget((run && run.target) || s.program.target || pasadaTarget);
     const res = simulate(s.program, ownTgt.product, 1);
-    const first = (describeProgram(s.program)[0] || {}).text || 'Estrategia personalizada.';
+    const forDesc = ownTgt.isGroup
+      ? `Estrategia para el grupo “${escapeHtml(ownTgt.label)}” (${ownTgt.count} publicaciones)`
+      : `Estrategia para ${escapeHtml(ownTgt.label)}`;
     let priceLine;
     if (run) {
       const rep = republishText(s.program);
@@ -463,8 +468,7 @@ function renderMine() {
     item.innerHTML = `
       <div class="mitem__main">
         <div class="mitem__name">${escapeHtml(s.name)} ${run ? `<span class="run-badge"><i></i>Corriendo</span>` : `<span class="chip chip--gray">${escapeHtml(s.tag || 'IA')}</span>`}</div>
-        <div class="mitem__for">${icon(ownTgt.isGroup ? 'layers' : 'producto')} ${escapeHtml(ownTgt.label)}</div>
-        <div class="mitem__desc">${escapeHtml(first)}</div>
+        <div class="mitem__for">${icon(ownTgt.isGroup ? 'layers' : 'producto')} ${forDesc}</div>
         <div class="mitem__price">${priceLine}</div>
       </div>
       <div class="mitem__tools">
