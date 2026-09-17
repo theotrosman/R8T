@@ -128,6 +128,28 @@ de entrada más simple sobre el mismo motor. No comparten bootstrap (v2.js ≠ a
 todo lo demás (blocks/strategies/editor/simulate/icons). Comparten bloques propios
 (`r8t.custom.v2`); v2 también sincroniza el autosave `r8t.save.v3` al guardar en el overlay.
 
+## v3.html — versión "Lite" (asistente guiado por 3 pasos)
+
+Respuesta al feedback de Ari (17-sep): armar una **v1 mucho más simple**, sin chat y sin las
+estrategias abstractas de "agresividad" (eran subjetivas y difíciles de bajar a tierra). El
+foco es **poca carga cognitiva**: el usuario elige con **selectores**, no escribe ni arma bloques.
+
+- **Empty state = "paraguas" de 3 promesas:** (1) creá una estrategia para una publicación o
+  un grupo, (2) definí qué querés lograr, (3) vos tenés el control (precio mínimo).
+- **Wizard de 3 pasos + resumen:**
+  1. **Destino:** una publicación (catálogo o link de MeLi) o un grupo.
+  2. **Objetivo (elegís 1):** Ganar Buy Box · Ganarle a un competidor (link de MeLi **o**
+     buscar en el **dump** = diferencial de RT) · Cuidar rentabilidad · Liquidar stock.
+     **Extras** (toggles): gestionar promociones; subir precio si queda poco stock
+     (regla estilo liquidación: "si me queda menos de X, subí X%").
+  3. **Piso:** precio mínimo — la única regla que nunca se rompe.
+- **Resumen en lenguaje natural** (`buildSentence` en `js/v3.js`): "Dale, vamos a gestionar
+  que ganes la Buy Box y ponerte todas las promociones mientras tu precio de venta nunca
+  quede por debajo de $14.000". Guarda en `localStorage` `r8t.v3.strategies`.
+- **Autónomo:** sólo depende de `icons.js` + `styles/v3.css` (no usa el motor de bloques, a
+  propósito: es la capa de entrada simple). La v2/index siguen siendo la versión avanzada
+  (link "Versión avanzada" en la topbar de v3 → `v2.html`).
+
 ## Diseño = Real Trends (NO cambiar sin motivo)
 
 Colores extraídos del sitio real (`real-trends.com`). Están en `styles/theme.css`:

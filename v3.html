@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>R8T · Estrategia de precios en 3 pasos — Real Trends</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <meta name="description" content="R8T Lite: armá tu estrategia de repricing de Mercado Libre en 3 pasos simples. Elegí qué querés lograr, y vos ponés el precio mínimo. Una función de Real Trends.">
+  <meta name="theme-color" content="#0065F3">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Real Trends">
+  <meta property="og:title" content="R8T · Estrategia de precios en 3 pasos — Real Trends">
+  <meta property="og:description" content="Armá tu estrategia de precios de Mercado Libre en 3 pasos, sin complicarte. Vos tenés el control del precio mínimo.">
+  <meta property="og:image" content="https://r8-t.vercel.app/assets/og.svg">
+  <meta property="og:url" content="https://r8-t.vercel.app/v3.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="styles/theme.css?v=14">
+  <link rel="stylesheet" href="styles/app.css?v=14">
+  <link rel="stylesheet" href="styles/v3.css?v=1">
+</head>
+<body>
+<div class="app app--v3">
+
+  <!-- Rail (idéntico al de Real Trends) -->
+  <nav class="rail">
+    <div class="rail__logo" title="Real Trends"><img src="assets/logo-realtrends.svg" alt="Real Trends"></div>
+    <button class="rail__item" title="Inicio" data-ic="home"></button>
+    <button class="rail__item is-active" title="R8T · Precios" data-ic="precio"></button>
+    <button class="rail__item" title="Análisis" data-ic="chart"></button>
+    <button class="rail__item" title="Reglas guardadas" data-ic="book"></button>
+    <div class="rail__spacer"></div>
+    <button class="rail__item" title="Ayuda" data-ic="info"></button>
+    <div class="rail__avatar" title="Mi cuenta">TR</div>
+  </nav>
+
+  <div class="main">
+    <!-- Topbar -->
+    <header class="topbar">
+      <span class="topbar__logo"><img src="assets/logo-realtrends.svg" alt="Real Trends"></span>
+      <span class="topbar__badge">R8T</span>
+      <div class="topbar__sep"></div>
+      <span class="topbar__title">Estrategia de precios</span>
+      <div class="topbar__spacer"></div>
+      <div class="topbar__actions">
+        <a class="btn btn--ghost btn--sm" href="v2.html" data-ic="chat" title="Versión con asistente (avanzada)"><span>Versión avanzada</span></a>
+      </div>
+    </header>
+
+    <!-- Cuerpo -->
+    <div class="v3" id="v3scroll">
+      <div class="v3__inner">
+
+        <!-- ============ EMPTY STATE / PARAGUAS ============ -->
+        <section id="emptyState">
+          <div class="empty">
+            <div class="empty__badge"><span class="chip chip--teal" data-ic="sparkles">R8T · versión simple</span></div>
+            <h1>Poné tus precios de Mercado Libre en piloto automático</h1>
+            <p class="empty__sub">Sin fórmulas ni bloques. Elegís qué querés lograr, nosotros gestionamos el precio por vos, y vos siempre tenés el control.</p>
+          </div>
+
+          <div class="promise">
+            <div class="pcard">
+              <div class="pcard__n">1</div>
+              <h3>Elegí a qué se lo aplicás</h3>
+              <p>Creá una estrategia para <b>una publicación</b> o para <b>un grupo</b> de publicaciones.</p>
+            </div>
+            <div class="pcard">
+              <div class="pcard__n">2</div>
+              <h3>Definí qué querés lograr</h3>
+              <p>Que <b>gestionemos tus promociones</b>, que <b>le ganes a un competidor</b>, ganar la <b>Buy Box</b>…</p>
+            </div>
+            <div class="pcard">
+              <div class="pcard__n">3</div>
+              <h3>Vos tenés el control</h3>
+              <p>Nunca vas a vender por debajo de tu <b>precio mínimo</b>. Lo ponés vos.</p>
+            </div>
+          </div>
+
+          <div style="text-align:center">
+            <button class="btn btn--primary" id="btnStart" data-ic="rocket" style="padding:13px 26px;font-size:15px">Crear una estrategia</button>
+          </div>
+
+          <!-- Mis estrategias guardadas -->
+          <div class="saved hidden" id="savedWrap">
+            <div class="saved__h">
+              <h3>Mis estrategias</h3>
+              <span class="chip chip--gray" id="savedCount">0</span>
+            </div>
+            <div class="saved__list" id="savedList"></div>
+          </div>
+        </section>
+
+        <!-- ============ WIZARD ============ -->
+        <section id="wizard" hidden>
+
+          <!-- Progreso -->
+          <div class="steps" id="steps">
+            <div class="steps__item" data-step="1"><div class="steps__dot">1</div><div class="steps__label">Publicaciones</div></div>
+            <div class="steps__line"></div>
+            <div class="steps__item" data-step="2"><div class="steps__dot">2</div><div class="steps__label">Objetivo</div></div>
+            <div class="steps__line"></div>
+            <div class="steps__item" data-step="3"><div class="steps__dot">3</div><div class="steps__label">Tu control</div></div>
+            <div class="steps__line"></div>
+            <div class="steps__item" data-step="4"><div class="steps__dot">4</div><div class="steps__label">Listo</div></div>
+          </div>
+
+          <!-- ---- Paso 1: destino ---- -->
+          <div class="pane" data-pane="1">
+            <div class="stephead">
+              <div class="stephead__k">Paso 1 de 3</div>
+              <h2>¿A qué le querés poner esta estrategia?</h2>
+              <p>Podés arrancar con una sola publicación para probar, o aplicarla a todo un grupo de una.</p>
+            </div>
+            <div class="opts opts--2" id="targetMode">
+              <button class="opt" data-mode="product">
+                <span class="opt__ic" data-ic="producto"></span>
+                <span class="opt__body">
+                  <span class="opt__title">Una publicación</span>
+                  <span class="opt__desc">Elegila de tu catálogo o pegá el link de Mercado Libre.</span>
+                </span>
+                <span class="opt__check" data-ic="check"></span>
+              </button>
+              <button class="opt" data-mode="group">
+                <span class="opt__ic" data-ic="layers"></span>
+                <span class="opt__body">
+                  <span class="opt__title">Un grupo de publicaciones</span>
+                  <span class="opt__desc">Una categoría entera o todas tus publicaciones juntas.</span>
+                </span>
+                <span class="opt__check" data-ic="check"></span>
+              </button>
+            </div>
+
+            <div id="targetPicker"></div>
+          </div>
+
+          <!-- ---- Paso 2: objetivo ---- -->
+          <div class="pane" data-pane="2">
+            <div class="stephead">
+              <div class="stephead__k">Paso 2 de 3</div>
+              <h2>¿Qué querés que hagamos con el precio?</h2>
+              <p>Elegí un objetivo principal. Después podés sumar extras si querés.</p>
+            </div>
+
+            <div class="opts" id="goalList">
+              <button class="opt opt--goal" data-goal="buybox">
+                <span class="opt__ic" data-ic="target"></span>
+                <span class="opt__body">
+                  <span class="opt__title">Ganar la Buy Box (catálogo)</span>
+                  <span class="opt__desc">Ajustamos el precio para que aparezcas como la publicación ganadora del catálogo.</span>
+                </span>
+                <span class="opt__check" data-ic="check"></span>
+              </button>
+
+              <button class="opt opt--goal" data-goal="competidor">
+                <span class="opt__ic" data-ic="competencia"></span>
+                <span class="opt__body">
+                  <span class="opt__title">Ganarle a un competidor</span>
+                  <span class="opt__desc">Seguimos a otra publicación y nos mantenemos por debajo de su precio.</span>
+                </span>
+                <span class="opt__check" data-ic="check"></span>
+              </button>
+
+              <button class="opt opt--goal" data-goal="rentabilidad">
+                <span class="opt__ic" data-ic="margen"></span>
+                <span class="opt__body">
+                  <span class="opt__title">Cuidar mi rentabilidad</span>
+                  <span class="opt__desc">Mantenemos el precio para que te quede un margen objetivo, sin regalar plata.</span>
+                </span>
+                <span class="opt__check" data-ic="check"></span>
+              </button>
+
+              <button class="opt opt--goal" data-goal="liquidar">
+                <span class="opt__ic" data-ic="stock"></span>
+                <span class="opt__body">
+                  <span class="opt__title">Liquidar stock parado</span>
+                  <span class="opt__desc">Bajamos el precio de a poco para mover lo que hace días no vende.</span>
+                </span>
+                <span class="opt__check" data-ic="check"></span>
+              </button>
+            </div>
+
+            <!-- Reveal: competidor -->
+            <div class="reveal hidden" id="revCompetidor">
+              <div class="reveal__title"><span data-ic="competencia"></span> ¿A qué competidor le querés ganar?</div>
+              <div class="seg" id="compSource">
+                <button data-src="link" class="is-on">Pegar link de Mercado Libre</button>
+                <button data-src="dump">Buscar en el dump</button>
+              </div>
+              <div class="field" id="compLinkField">
+                <label class="field__label">Link de la publicación a seguir</label>
+                <input class="input" id="compLink" placeholder="https://articulo.mercadolibre.com.ar/MLA-..." spellcheck="false">
+              </div>
+              <div class="field hidden" id="compDumpField">
+                <label class="field__label">Buscá la publicación en el dump de Real Trends</label>
+                <div class="picker">
+                  <div class="picker__search"><span data-ic="search"></span><input id="dumpSearch" placeholder="Ej: auriculares bluetooth, zapatillas…" spellcheck="false"></div>
+                  <div class="picker__list" id="dumpList"></div>
+                </div>
+                <div class="field__hint">El dump es exclusivo de Real Trends: te deja seguir precios que otros repricers no ven.</div>
+              </div>
+              <div class="field">
+                <label class="field__label">Quedar por debajo</label>
+                <div class="inline-rule">
+                  <span>Poné mi precio</span>
+                  <input class="input" id="compDelta" type="number" min="0" value="200">
+                  <span>pesos por debajo del competidor.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Reveal: rentabilidad -->
+            <div class="reveal hidden" id="revRentabilidad">
+              <div class="reveal__title"><span data-ic="margen"></span> ¿Qué margen querés cuidar?</div>
+              <div class="inline-rule">
+                <span>Mantené un margen neto de por lo menos</span>
+                <input class="input" id="rentTarget" type="number" min="0" value="20">
+                <span>%.</span>
+              </div>
+            </div>
+
+            <!-- Reveal: liquidar -->
+            <div class="reveal hidden" id="revLiquidar">
+              <div class="reveal__title"><span data-ic="stock"></span> ¿Cuánto podés bajar?</div>
+              <div class="inline-rule">
+                <span>Bajá el precio hasta un</span>
+                <input class="input" id="liqMax" type="number" min="0" value="15">
+                <span>% para mover el stock parado.</span>
+              </div>
+            </div>
+
+            <!-- Extras -->
+            <div class="stephead" style="margin-top:28px;margin-bottom:14px">
+              <div class="stephead__k">Extras (opcional)</div>
+            </div>
+            <div class="opts">
+              <div class="addon" id="addonPromos">
+                <span class="addon__ic" data-ic="promos"></span>
+                <div class="addon__body">
+                  <div class="addon__title">Gestioná mis promociones</div>
+                  <div class="addon__desc">Activamos las promociones de Mercado Libre que te convengan, siempre respetando tu precio mínimo.</div>
+                </div>
+                <button class="switch" data-switch="promos" aria-label="Activar gestión de promociones"></button>
+              </div>
+
+              <div class="addon" id="addonStock">
+                <span class="addon__ic" data-ic="bolt"></span>
+                <div class="addon__body">
+                  <div class="addon__title">Cuidá el precio cuando quede poco stock</div>
+                  <div class="addon__desc">Si te queda poca cantidad, subimos el precio para aprovechar la demanda.</div>
+                  <div class="addon__extra">
+                    <div class="inline-rule">
+                      <span>Si me quedan menos de</span>
+                      <input class="input" id="stockQty" type="number" min="1" value="5">
+                      <span>unidades, subí el precio un</span>
+                      <input class="input" id="stockPct" type="number" min="1" value="8">
+                      <span>%.</span>
+                    </div>
+                  </div>
+                </div>
+                <button class="switch" data-switch="stock" aria-label="Activar regla de stock bajo"></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---- Paso 3: control / piso ---- -->
+          <div class="pane" data-pane="3">
+            <div class="stephead">
+              <div class="stephead__k">Paso 3 de 3</div>
+              <h2>El precio es tuyo. ¿Cuál es tu piso?</h2>
+              <p>Hagamos lo que hagamos con el precio, nunca vamos a vender por debajo de este número. Es tu red de seguridad.</p>
+            </div>
+
+            <div class="opts">
+              <div class="field">
+                <label class="field__label">Precio mínimo de venta</label>
+                <div class="money-wrap">
+                  <input class="input input--money" id="minPrice" type="number" min="0" placeholder="14000">
+                </div>
+                <div class="field__hint" id="minPriceHint">Por debajo de este precio, R8T no toca nada y te avisa.</div>
+              </div>
+            </div>
+
+            <div class="control-note" style="margin-top:16px">
+              <span data-ic="shield"></span>
+              <span>Podés cambiar tu precio mínimo cuando quieras. Mientras esté activo, es la única regla que nunca se rompe.</span>
+            </div>
+          </div>
+
+          <!-- ---- Paso 4: resumen ---- -->
+          <div class="pane" data-pane="4">
+            <div class="stephead">
+              <div class="stephead__k">Todo listo</div>
+              <h2>Repasá tu estrategia</h2>
+              <p>Así queda. Si algo no cierra, volvé atrás y cambialo. Cuando estés, la activás.</p>
+            </div>
+
+            <div class="summary">
+              <div class="summary__k">Tu estrategia, en una frase</div>
+              <div class="summary__sentence" id="sumSentence"></div>
+              <div class="summary__grid" id="sumGrid"></div>
+            </div>
+          </div>
+
+          <!-- Navegación -->
+          <div class="navbar">
+            <button class="btn btn--ghost" id="btnBack" data-ic="undo">Atrás</button>
+            <div class="field-error" id="navError"><span data-ic="alert"></span><span id="navErrorTxt"></span></div>
+            <div class="navbar__spacer"></div>
+            <button class="btn btn--ghost btn--sm" id="btnCancel" data-ic="close">Cancelar</button>
+            <button class="btn btn--primary" id="btnNext" data-ic="chevron">Siguiente</button>
+            <button class="btn btn--teal hidden" id="btnActivate" data-ic="play">Activar estrategia</button>
+          </div>
+
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="js/icons.js?v=16"></script>
+<script src="js/v3.js?v=1"></script>
+</body>
+</html>
