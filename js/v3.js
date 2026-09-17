@@ -19,10 +19,10 @@
     { id: 'p5', name: 'Mochila Notebook 15.6"',  price: 24999,  stock: 210, daysNoSale: 9 },
   ];
   const GROUPS = [
-    { id: 'g1', name: 'Categoría: Electrónica', count: 128 },
-    { id: 'g2', name: 'Categoría: Indumentaria deportiva', count: 64 },
-    { id: 'g3', name: 'Categoría: Hogar y cocina', count: 210 },
-    { id: 'g4', name: 'Todas mis publicaciones', count: 412 },
+    { id: 'g1', name: 'Categoría: Electrónica', count: 128, min: 8990, max: 189990 },
+    { id: 'g2', name: 'Categoría: Indumentaria deportiva', count: 64, min: 15990, max: 129990 },
+    { id: 'g3', name: 'Categoría: Hogar y cocina', count: 210, min: 4990, max: 249990 },
+    { id: 'g4', name: 'Todas mis publicaciones', count: 412, min: 4990, max: 249990 },
   ];
   // "Dump" = diferencial de Real Trends: publicaciones de la competencia.
   const DUMP = [
@@ -47,9 +47,10 @@
   /* ---------- Estado del asistente ---------- */
   const blank = () => ({
     step: 1,
-    target: { mode: null, id: null, link: '' },       // product | group
+    editingId: null,                                    // si estamos editando una guardada
+    target: { mode: null, id: null, link: '' },        // product | group
     goal: null,                                         // buybox | competidor | ...
-    comp: { source: 'link', link: '', dumpId: null, delta: 200 },
+    comp: { source: 'link', link: '', dumpId: null, mode: 'below_amount', delta: 200, pct: 3 },
     rentTarget: 20,
     liqMax: 15,
     promos: false,
@@ -76,17 +77,42 @@
     setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(8px)'; setTimeout(() => t.remove(), 250); }, 2600);
   }
 
+  /* ---------- Modal de confirmación (promesa) ---------- */
+  function confirmDialog({ title, msg, yes }) {
+    return new Promise(resolve => {
+      const m = $('#confirmModal');
+      $('#confirmTitle').textContent = title || '¿Seguro?';
+      $('#confirmMsg').textContent = msg || '';
+      $('#confirmYes').textContent = yes || 'Sí';
+      m.hidden = false;
+      const done = v => { m.hidden = true; cleanup(); resolve(v); };
+      const onYes = () => done(true);
+      const onNo = () => done(false);
+      const onKey = e => { if (e.key === 'Escape') done(false); };
+      function cleanup() {
+        $('#confirmYes').removeEventListener('click', onYes);
+        m.querySelectorAll('[data-close]').forEach(el => el.removeEventListener('click', onNo));
+        document.removeEventListener('keydown', onKey);
+      }
+      $('#confirmYes').addEventListener('click', onYes);
+      m.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', onNo));
+      document.addEventListener('keydown', onKey);
+    });
+  }
+
   /* ---------- Persistencia ---------- */
   function loadSaved() { try { return JSON.parse(localStorage.getItem(STORE) || '[]'); } catch { return []; } }
   function saveSaved(list) { try { localStorage.setItem(STORE, JSON.stringify(list)); } catch {} }
+  const isDirty = () => !!(S.target.mode || S.goal || S.minPrice);
 
   /* ============================================================
      NAVEGACIÓN DEL WIZARD
      ============================================================ */
-  function showWizard() {
+  function showWizard(state) {
     $('#emptyState').hidden = true;
     $('#wizard').hidden = false;
-    S = blank();
+    S = state || blank();
+    applyStateToDOM();
     renderStep();
     $('#v3scroll').scrollTop = 0;
   }
@@ -98,43 +124,47 @@
   }
 
   function renderStep() {
-    // paneles
     $$('.pane').forEach(p => p.classList.toggle('is-active', +p.dataset.pane === S.step));
-    // progreso
     $$('#steps .steps__item').forEach(it => {
       const n = +it.dataset.step;
       it.classList.toggle('is-active', n === S.step);
       it.classList.toggle('is-done', n < S.step);
-      const dot = it.querySelector('.steps__dot');
-      dot.innerHTML = n < S.step ? icon('check') : String(n);
+      it.querySelector('.steps__dot').innerHTML = n < S.step ? icon('check') : String(n);
     });
-    // botones
     $('#btnBack').style.visibility = S.step === 1 ? 'hidden' : 'visible';
     const last = S.step === 4;
     $('#btnNext').classList.toggle('hidden', last);
     $('#btnActivate').classList.toggle('hidden', !last);
     clearError();
+    if (S.step === 3) renderMinPriceGuide();
     if (S.step === 4) renderSummary();
     $('#v3scroll').scrollTop = 0;
   }
 
-  function showError(msg) {
-    $('#navErrorTxt').textContent = msg;
-    $('#navError').classList.add('show');
-  }
+  function showError(msg) { $('#navErrorTxt').textContent = msg; $('#navError').classList.add('show'); }
   function clearError() { $('#navError').classList.remove('show'); }
+
+  function looksLikeMeliLink(v) {
+    v = (v || '').trim().toLowerCase();
+    return v.includes('mercadolibre.') || v.includes('/mla-') || v.includes('mla-') || v.startsWith('http');
+  }
 
   function validateStep() {
     if (S.step === 1) {
       if (!S.target.mode) return 'Elegí si es una publicación o un grupo.';
-      if (S.target.mode === 'product' && !S.target.id && !S.target.link.trim())
-        return 'Elegí una publicación o pegá un link.';
+      if (S.target.mode === 'product') {
+        if (!S.target.id && !S.target.link.trim()) return 'Elegí una publicación o pegá un link.';
+        if (!S.target.id && S.target.link.trim() && !looksLikeMeliLink(S.target.link)) return 'Ese link no parece de Mercado Libre. Revisalo.';
+      }
       if (S.target.mode === 'group' && !S.target.id) return 'Elegí un grupo de publicaciones.';
     }
     if (S.step === 2) {
       if (!S.goal) return 'Elegí qué querés lograr.';
       if (S.goal === 'competidor') {
-        if (S.comp.source === 'link' && !S.comp.link.trim()) return 'Pegá el link del competidor a seguir.';
+        if (S.comp.source === 'link') {
+          if (!S.comp.link.trim()) return 'Pegá el link del competidor a seguir.';
+          if (!looksLikeMeliLink(S.comp.link)) return 'Ese link no parece de Mercado Libre. Revisalo.';
+        }
         if (S.comp.source === 'dump' && !S.comp.dumpId) return 'Elegí una publicación del dump.';
       }
     }
@@ -151,13 +181,25 @@
   }
   function back() { if (S.step > 1) { S.step--; renderStep(); } }
 
+  async function cancel() {
+    if (isDirty()) {
+      const ok = await confirmDialog({ title: '¿Descartar la estrategia?', msg: 'Vas a perder lo que cargaste en estos pasos.', yes: 'Sí, descartar' });
+      if (!ok) return;
+    }
+    showEmpty();
+  }
+
   /* ============================================================
      PASO 1 — DESTINO
      ============================================================ */
   function selectMode(mode) {
-    S.target = { mode, id: null, link: '', };
-    $$('#targetMode .opt').forEach(o => o.classList.toggle('is-sel', o.dataset.mode === mode));
+    if (S.target.mode !== mode) S.target = { mode, id: null, link: '' };
+    $$('#targetMode .opt').forEach(o => {
+      const on = o.dataset.mode === mode;
+      o.classList.toggle('is-sel', on); o.setAttribute('aria-pressed', on);
+    });
     renderTargetPicker();
+    clearError();
   }
 
   function renderTargetPicker() {
@@ -174,7 +216,7 @@
           </div>
           <div class="field">
             <label class="field__label">…o pegá el link de tu publicación de Mercado Libre</label>
-            <input class="input" id="prodLink" placeholder="https://articulo.mercadolibre.com.ar/MLA-..." spellcheck="false" value="${S.target.link || ''}">
+            <input class="input" id="prodLink" placeholder="https://articulo.mercadolibre.com.ar/MLA-..." spellcheck="false" inputmode="url" value="${S.target.link || ''}">
           </div>
         </div>`;
       hydrateIcons(host);
@@ -238,17 +280,34 @@
      ============================================================ */
   function selectGoal(goal) {
     S.goal = goal;
-    $$('#goalList .opt').forEach(o => o.classList.toggle('is-sel', o.dataset.goal === goal));
+    $$('#goalList .opt').forEach(o => {
+      const on = o.dataset.goal === goal;
+      o.classList.toggle('is-sel', on); o.setAttribute('aria-pressed', on);
+    });
+    $('#revBuybox').classList.toggle('hidden', goal !== 'buybox');
     $('#revCompetidor').classList.toggle('hidden', goal !== 'competidor');
     $('#revRentabilidad').classList.toggle('hidden', goal !== 'rentabilidad');
     $('#revLiquidar').classList.toggle('hidden', goal !== 'liquidar');
     clearError();
   }
 
+  function setSwitch(key, on) {
+    const sw = document.querySelector('.switch[data-switch="' + key + '"]');
+    if (!sw) return;
+    sw.classList.toggle('is-on', on); sw.setAttribute('aria-pressed', on);
+    sw.closest('.addon').classList.toggle('is-on', on);
+  }
+
+  function syncCompMode() {
+    $$('#compMode button').forEach(b => b.classList.toggle('is-on', b.dataset.mode === S.comp.mode));
+    $('#cmBelowAmount').classList.toggle('hidden', S.comp.mode !== 'below_amount');
+    $('#cmBelowPct').classList.toggle('hidden', S.comp.mode !== 'below_pct');
+    $('#cmMatch').classList.toggle('hidden', S.comp.mode !== 'match');
+  }
+
   function initStep2() {
     $$('#goalList .opt').forEach(o => o.addEventListener('click', () => selectGoal(o.dataset.goal)));
 
-    // fuente competidor (link / dump)
     $$('#compSource button').forEach(b => b.addEventListener('click', () => {
       S.comp.source = b.dataset.src;
       $$('#compSource button').forEach(x => x.classList.toggle('is-on', x === b));
@@ -256,20 +315,22 @@
       $('#compDumpField').classList.toggle('hidden', b.dataset.src !== 'dump');
       clearError();
     }));
+    $$('#compMode button').forEach(b => b.addEventListener('click', () => {
+      S.comp.mode = b.dataset.mode; syncCompMode();
+    }));
     $('#compLink').addEventListener('input', e => { S.comp.link = e.target.value; clearError(); });
     $('#compDelta').addEventListener('input', e => { S.comp.delta = e.target.value; });
+    $('#compPct').addEventListener('input', e => { S.comp.pct = e.target.value; });
     $('#dumpSearch').addEventListener('input', e => renderDump(e.target.value));
     renderDump('');
 
     $('#rentTarget').addEventListener('input', e => { S.rentTarget = e.target.value; });
     $('#liqMax').addEventListener('input', e => { S.liqMax = e.target.value; });
 
-    // extras
     $$('.switch').forEach(sw => sw.addEventListener('click', () => {
       const key = sw.dataset.switch;
       const on = !sw.classList.contains('is-on');
-      sw.classList.toggle('is-on', on);
-      const card = sw.closest('.addon'); card.classList.toggle('is-on', on);
+      setSwitch(key, on);
       if (key === 'promos') S.promos = on;
       if (key === 'stock') S.stockRule.on = on;
     }));
@@ -296,10 +357,50 @@
   }
 
   /* ============================================================
-     PASO 3 — PISO
+     PASO 3 — PISO (con guía que acompaña al usuario)
      ============================================================ */
   function initStep3() {
     $('#minPrice').addEventListener('input', e => { S.minPrice = e.target.value; clearError(); });
+  }
+
+  function renderMinPriceGuide() {
+    const host = $('#minPriceGuide'); if (!host) return;
+    let title = '', desc = '', suggest = null;
+
+    if (S.target.mode === 'product') {
+      const p = PRODUCTS.find(x => x.id === S.target.id);
+      if (p) {
+        suggest = Math.round(p.price * 0.85 / 100) * 100; // ~15% bajo el precio actual, redondeado
+        title = 'Hoy vendés a ' + money(p.price);
+        desc = 'Un piso razonable te deja margen para competir sin regalar plata. Te sugerimos <b>' + money(suggest) + '</b>, pero el número lo ponés vos.';
+      } else if (S.target.link) {
+        title = 'Publicación por link';
+        desc = 'Poné el precio más bajo al que estarías dispuesto a vender esa publicación.';
+      }
+    } else if (S.target.mode === 'group') {
+      const g = GROUPS.find(x => x.id === S.target.id);
+      if (g) {
+        title = g.name;
+        desc = 'Tus precios en este grupo van de <b>' + money(g.min) + '</b> a <b>' + money(g.max) + '</b>. El piso se aplica como regla general; después podés afinarlo por publicación.';
+      }
+    }
+    if (!title) { host.innerHTML = ''; return; }
+
+    host.innerHTML = `
+      <div class="mpguide">
+        <span class="mpguide__ic" data-ic="wand"></span>
+        <div class="mpguide__body">
+          <div class="mpguide__t">${title}</div>
+          <div class="mpguide__d">${desc}</div>
+          ${suggest ? `<button class="mpguide__btn" id="useSuggest" type="button">${icon('check')} Usar ${money(suggest)}</button>` : ''}
+        </div>
+      </div>`;
+    hydrateIcons(host);
+    const btn = $('#useSuggest');
+    if (btn) btn.addEventListener('click', () => {
+      S.minPrice = suggest; $('#minPrice').value = suggest; clearError();
+      toast('Precio mínimo sugerido aplicado', 'wand');
+    });
   }
 
   /* ============================================================
@@ -323,16 +424,18 @@
     return 'la publicación del link';
   }
 
+  function compPositionPhrase() {
+    if (S.comp.mode === 'match') return 'igualando su precio';
+    if (S.comp.mode === 'below_pct') return 'quedando un <b>' + (Number(S.comp.pct) || 0) + '% por debajo</b>';
+    return 'quedando <b>' + money(S.comp.delta) + ' por debajo</b>';
+  }
+
   function goalPhrase() {
     switch (S.goal) {
-      case 'buybox':
-        return 'ganes la <b>Buy Box</b> del catálogo';
-      case 'competidor':
-        return 'le ganes a <b>' + competitorLabel() + '</b>, quedando <b>' + money(S.comp.delta) + ' por debajo</b>';
-      case 'rentabilidad':
-        return 'cuides tu <b>rentabilidad</b> con un margen de al menos <b>' + (Number(S.rentTarget) || 0) + '%</b>';
-      case 'liquidar':
-        return 'liquides el <b>stock parado</b>, bajando el precio hasta un <b>' + (Number(S.liqMax) || 0) + '%</b>';
+      case 'buybox':       return 'ganes la <b>Buy Box</b> del catálogo';
+      case 'competidor':   return 'le ganes a <b>' + competitorLabel() + '</b>, ' + compPositionPhrase();
+      case 'rentabilidad': return 'cuides tu <b>rentabilidad</b> con un margen de al menos <b>' + (Number(S.rentTarget) || 0) + '%</b>';
+      case 'liquidar':     return 'liquides el <b>stock parado</b>, bajando el precio hasta un <b>' + (Number(S.liqMax) || 0) + '%</b>';
       default: return 'gestiones tu precio';
     }
   }
@@ -348,6 +451,13 @@
     return s;
   }
 
+  function extrasList() {
+    const e = [];
+    if (S.promos) e.push('Promociones gestionadas');
+    if (S.stockRule.on) e.push('Sube +' + (S.stockRule.pct || 0) + '% si < ' + (S.stockRule.qty || 0) + ' u.');
+    return e;
+  }
+
   function renderSummary() {
     $('#sumSentence').innerHTML = buildSentence();
     const g = GOALS[S.goal] || {};
@@ -356,53 +466,117 @@
       { k: 'Objetivo', v: g.label || '—', ic: g.icon || 'target' },
       { k: 'Precio mínimo', v: money(S.minPrice), ic: 'lock' },
     ];
-    const extras = [];
-    if (S.promos) extras.push('Promociones gestionadas');
-    if (S.stockRule.on) extras.push('Sube +' + (S.stockRule.pct || 0) + '% si < ' + (S.stockRule.qty || 0) + ' u.');
-    rows.push({ k: 'Extras', v: extras.length ? extras.join(' · ') : 'Ninguno', ic: 'sparkles' });
-
+    const ex = extrasList();
+    rows.push({ k: 'Extras', v: ex.length ? ex.join(' · ') : 'Ninguno', ic: 'sparkles' });
     $('#sumGrid').innerHTML = rows.map(r => `
       <div class="sitem">
         <div class="sitem__k">${r.k}</div>
         <div class="sitem__v">${icon(r.ic)}<span>${r.v}</span></div>
       </div>`).join('');
+    $('#btnActivate').innerHTML = icon('play') + '<span>' + (S.editingId ? 'Guardar cambios' : 'Activar estrategia') + '</span>';
   }
 
   /* ============================================================
-     GUARDAR / ACTIVAR
+     APLICAR ESTADO → DOM (para editar/duplicar)
+     ============================================================ */
+  function applyStateToDOM() {
+    // Paso 1
+    if (S.target.mode) selectMode(S.target.mode); else {
+      $$('#targetMode .opt').forEach(o => { o.classList.remove('is-sel'); o.setAttribute('aria-pressed', false); });
+      $('#targetPicker').innerHTML = '';
+    }
+    // Paso 2 — objetivo
+    if (S.goal) selectGoal(S.goal); else {
+      $$('#goalList .opt').forEach(o => { o.classList.remove('is-sel'); o.setAttribute('aria-pressed', false); });
+      ['revBuybox', 'revCompetidor', 'revRentabilidad', 'revLiquidar'].forEach(id => $('#' + id).classList.add('hidden'));
+    }
+    // comp
+    $$('#compSource button').forEach(x => x.classList.toggle('is-on', x.dataset.src === S.comp.source));
+    $('#compLinkField').classList.toggle('hidden', S.comp.source !== 'link');
+    $('#compDumpField').classList.toggle('hidden', S.comp.source !== 'dump');
+    $('#compLink').value = S.comp.link || '';
+    $('#compDelta').value = S.comp.delta;
+    $('#compPct').value = S.comp.pct;
+    syncCompMode();
+    renderDump('');
+    $('#rentTarget').value = S.rentTarget;
+    $('#liqMax').value = S.liqMax;
+    // extras
+    setSwitch('promos', S.promos);
+    setSwitch('stock', S.stockRule.on);
+    $('#stockQty').value = S.stockRule.qty;
+    $('#stockPct').value = S.stockRule.pct;
+    // Paso 3
+    $('#minPrice').value = S.minPrice != null ? S.minPrice : '';
+  }
+
+  /* ============================================================
+     GUARDAR / ACTIVAR / EDITAR
      ============================================================ */
   function plainSentence() {
-    // versión sin HTML para la tarjeta guardada
     const tmp = document.createElement('div');
     tmp.innerHTML = buildSentence();
     return tmp.textContent;
+  }
+
+  function snapshot() {
+    return JSON.parse(JSON.stringify({
+      target: S.target, goal: S.goal, comp: S.comp, rentTarget: S.rentTarget,
+      liqMax: S.liqMax, promos: S.promos, stockRule: S.stockRule, minPrice: S.minPrice,
+    }));
   }
 
   function activate() {
     const err = validateStep();
     if (err) { showError(err); return; }
     const g = GOALS[S.goal] || {};
-    const name = g.label + ' · ' + targetLabel();
-    const list = loadSaved();
-    list.unshift({
-      id: 'v3_' + Date.now(),
-      name,
+    const record = {
+      id: S.editingId || ('v3_' + Date.now()),
+      name: g.label + ' · ' + targetLabel(),
       goal: S.goal,
       icon: g.icon || 'target',
       desc: plainSentence(),
+      state: snapshot(),
       active: true,
       createdAt: new Date().toISOString(),
-    });
+    };
+    let list = loadSaved();
+    if (S.editingId) {
+      const i = list.findIndex(x => x.id === S.editingId);
+      if (i >= 0) { record.createdAt = list[i].createdAt; record.active = list[i].active; list[i] = record; }
+      else list.unshift(record);
+      toast('Cambios guardados', 'save');
+    } else {
+      list.unshift(record);
+      toast('Estrategia activada', 'rocket');
+    }
     saveSaved(list);
-    toast('Estrategia activada', 'rocket');
     showEmpty();
   }
 
+  function editStrategy(id) {
+    const rec = loadSaved().find(x => x.id === id);
+    if (!rec || !rec.state) { toast('No se puede editar esta estrategia', 'alert'); return; }
+    const st = Object.assign(blank(), rec.state, { step: 1, editingId: id });
+    showWizard(st);
+  }
+
+  function duplicateStrategy(id) {
+    const rec = loadSaved().find(x => x.id === id);
+    if (!rec || !rec.state) return;
+    const st = Object.assign(blank(), JSON.parse(JSON.stringify(rec.state)), { step: 4, editingId: null });
+    showWizard(st);
+    toast('Duplicá y ajustá lo que quieras', 'copy');
+  }
+
+  /* ============================================================
+     "MIS ESTRATEGIAS" (empty state)
+     ============================================================ */
   function renderSaved() {
     const list = loadSaved();
-    const wrap = $('#savedWrap');
-    wrap.classList.toggle('hidden', list.length === 0);
+    $('#savedWrap').classList.toggle('hidden', list.length === 0);
     $('#savedCount').textContent = list.length;
+    $('#btnStart').innerHTML = icon('rocket') + '<span>' + (list.length ? 'Crear otra estrategia' : 'Crear una estrategia') + '</span>';
     $('#savedList').innerHTML = list.map(s => `
       <div class="scard" data-id="${s.id}">
         <span class="scard__ic">${icon(s.icon || 'target')}</span>
@@ -410,20 +584,26 @@
           <div class="scard__name">${s.name}</div>
           <div class="scard__desc">${s.desc}</div>
         </div>
-        <span class="scard__state"><span class="chip ${s.active ? 'chip--teal' : 'chip--gray'}">${s.active ? 'Activa' : 'Pausada'}</span></span>
-        <button class="scard__del" data-del="${s.id}" title="Eliminar">${icon('trash')}</button>
+        <span class="scard__state"><span class="chip ${s.active ? 'chip--teal' : 'chip--gray'}" title="Tocá para pausar/activar">${s.active ? 'Activa' : 'Pausada'}</span></span>
+        <div class="scard__acts">
+          <button class="scard__act" data-edit="${s.id}" title="Editar" ${s.state ? '' : 'disabled'}>${icon('edit')}</button>
+          <button class="scard__act" data-dup="${s.id}" title="Duplicar" ${s.state ? '' : 'disabled'}>${icon('copy')}</button>
+          <button class="scard__act scard__act--del" data-del="${s.id}" title="Eliminar">${icon('trash')}</button>
+        </div>
       </div>`).join('');
-    $$('#savedList .scard__del').forEach(b => b.addEventListener('click', () => {
-      const id = b.dataset.del;
-      saveSaved(loadSaved().filter(x => x.id !== id));
-      renderSaved();
-      toast('Estrategia eliminada', 'trash');
+
+    $$('#savedList [data-del]').forEach(b => b.addEventListener('click', async () => {
+      const ok = await confirmDialog({ title: '¿Eliminar la estrategia?', msg: 'Esta acción no se puede deshacer.', yes: 'Sí, eliminar' });
+      if (!ok) return;
+      saveSaved(loadSaved().filter(x => x.id !== b.dataset.del));
+      renderSaved(); toast('Estrategia eliminada', 'trash');
     }));
-    // toggle activa/pausada al tocar el chip
-    $$('#savedList .scard__state').forEach(el => el.addEventListener('click', () => {
+    $$('#savedList [data-edit]').forEach(b => b.addEventListener('click', () => editStrategy(b.dataset.edit)));
+    $$('#savedList [data-dup]').forEach(b => b.addEventListener('click', () => duplicateStrategy(b.dataset.dup)));
+    $$('#savedList .scard__state .chip').forEach(el => el.addEventListener('click', () => {
       const id = el.closest('.scard').dataset.id;
-      const l = loadSaved().map(x => x.id === id ? { ...x, active: !x.active } : x);
-      saveSaved(l); renderSaved();
+      saveSaved(loadSaved().map(x => x.id === id ? { ...x, active: !x.active } : x));
+      renderSaved();
     }));
   }
 
@@ -432,20 +612,14 @@
      ============================================================ */
   function init() {
     hydrateIcons(document);
-
-    $('#btnStart').addEventListener('click', showWizard);
-    $('#btnCancel').addEventListener('click', () => { if (confirm('¿Descartar esta estrategia?')) showEmpty(); });
+    $('#btnStart').addEventListener('click', () => showWizard());
+    $('#btnCancel').addEventListener('click', cancel);
     $('#btnNext').addEventListener('click', next);
     $('#btnBack').addEventListener('click', back);
     $('#btnActivate').addEventListener('click', activate);
-
-    // Paso 1
     $$('#targetMode .opt').forEach(o => o.addEventListener('click', () => selectMode(o.dataset.mode)));
-    // Paso 2
     initStep2();
-    // Paso 3
     initStep3();
-
     renderSaved();
   }
 
