@@ -578,20 +578,30 @@
     $('#savedCount').textContent = list.length;
     $('#btnStart').innerHTML = icon('rocket') + '<span>' + (list.length ? 'Crear otra estrategia' : 'Crear una estrategia') + '</span>';
     $('#savedList').innerHTML = list.map(s => `
-      <div class="scard" data-id="${s.id}">
+      <div class="scard ${s.active ? 'scard--active' : ''}" data-id="${s.id}">
         <span class="scard__ic">${icon(s.icon || 'target')}</span>
         <div class="scard__main">
-          <div class="scard__name">${s.name}</div>
+          <div class="scard__name">
+            <span>${s.name}</span>
+            ${s.active ? '<span class="run-badge"><i></i>Activa</span>' : '<span class="chip chip--gray">Pausada</span>'}
+          </div>
           <div class="scard__desc">${s.desc}</div>
         </div>
-        <span class="scard__state"><span class="chip ${s.active ? 'chip--teal' : 'chip--gray'}" title="Tocá para pausar/activar">${s.active ? 'Activa' : 'Pausada'}</span></span>
         <div class="scard__acts">
+          <button class="scard__act" data-toggle="${s.id}" title="${s.active ? 'Pausar' : 'Activar'}">${icon(s.active ? 'pause' : 'play')}</button>
           <button class="scard__act" data-edit="${s.id}" title="Editar" ${s.state ? '' : 'disabled'}>${icon('edit')}</button>
           <button class="scard__act" data-dup="${s.id}" title="Duplicar" ${s.state ? '' : 'disabled'}>${icon('copy')}</button>
           <button class="scard__act scard__act--del" data-del="${s.id}" title="Eliminar">${icon('trash')}</button>
         </div>
       </div>`).join('');
 
+    $$('#savedList [data-toggle]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.toggle;
+      const list2 = loadSaved().map(x => x.id === id ? { ...x, active: !x.active } : x);
+      saveSaved(list2); renderSaved();
+      const now = list2.find(x => x.id === id);
+      toast(now && now.active ? 'Estrategia activada' : 'Estrategia pausada', now && now.active ? 'play' : 'pause');
+    }));
     $$('#savedList [data-del]').forEach(b => b.addEventListener('click', async () => {
       const ok = await confirmDialog({ title: '¿Eliminar la estrategia?', msg: 'Esta acción no se puede deshacer.', yes: 'Sí, eliminar' });
       if (!ok) return;
@@ -600,11 +610,6 @@
     }));
     $$('#savedList [data-edit]').forEach(b => b.addEventListener('click', () => editStrategy(b.dataset.edit)));
     $$('#savedList [data-dup]').forEach(b => b.addEventListener('click', () => duplicateStrategy(b.dataset.dup)));
-    $$('#savedList .scard__state .chip').forEach(el => el.addEventListener('click', () => {
-      const id = el.closest('.scard').dataset.id;
-      saveSaved(loadSaved().map(x => x.id === id ? { ...x, active: !x.active } : x));
-      renderSaved();
-    }));
   }
 
   /* ============================================================

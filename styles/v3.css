@@ -15,7 +15,9 @@
     radial-gradient(900px 380px at 0% -80px, rgba(0,101,243,.10), transparent 55%),
     var(--rt-bg);
 }
-.v3__inner { max-width: 880px; margin: 0 auto; padding: 34px 24px 80px; }
+.v3__inner { max-width: 720px; margin: 0 auto; padding: 34px 24px 80px; }
+/* El empty state respira un poco más ancho para las 3 tarjetas del "paraguas" */
+#emptyState { max-width: 860px; margin: 0 auto; }
 
 /* ---------- Barra de progreso ---------- */
 .steps {
@@ -161,8 +163,8 @@
 .pick__thumb { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 9px; background: #eef1f6; display: grid; place-items: center; color: var(--rt-gray); }
 .pick__thumb svg { width: 19px; height: 19px; }
 .pick__main { flex: 1; min-width: 0; }
-.pick__name { font-weight: 700; font-size: 14px; color: var(--rt-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pick__meta { font-size: 12.5px; color: var(--rt-gray-400); margin-top: 1px; }
+.pick__name { display: block; font-weight: 700; font-size: 14px; color: var(--rt-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick__meta { display: block; font-size: 12.5px; color: var(--rt-gray-400); margin-top: 2px; }
 .pick__check { color: var(--rt-blue); opacity: 0; }
 .pick__check svg { width: 20px; height: 20px; }
 .pick.is-sel .pick__check { opacity: 1; }
@@ -242,14 +244,21 @@
 .scard {
   display: flex; align-items: center; gap: 13px; background: var(--rt-surface);
   border: 1px solid var(--rt-line); border-radius: var(--r-card); padding: 14px 16px; box-shadow: var(--shadow-sm);
+  transition: border-color .15s, box-shadow .15s, background .15s;
 }
 .scard__ic { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--rt-teal-050); color: var(--rt-teal-600); }
 .scard__ic svg { width: 21px; height: 21px; }
 .scard__main { flex: 1; min-width: 0; }
-.scard__name { font-weight: 800; font-size: 14.5px; }
-.scard__desc { font-size: 13px; color: var(--rt-gray); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.scard__name { font-weight: 800; font-size: 14.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.scard__desc { font-size: 13px; color: var(--rt-gray); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* Estado ACTIVA (como en v2: tarjeta teñida + badge con pulso) */
+.scard--active { background: var(--rt-blue-050); border-color: color-mix(in srgb, var(--rt-blue) 32%, var(--rt-line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--rt-blue) 12%, transparent); }
+.scard--active .scard__ic { background: var(--rt-blue); color: #fff; }
+.run-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--rt-blue); background: #fff; border: 1px solid color-mix(in srgb, var(--rt-blue) 30%, var(--rt-line)); border-radius: var(--r-pill); padding: 2px 9px 2px 7px; }
+.run-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--rt-blue); box-shadow: 0 0 0 0 color-mix(in srgb, var(--rt-blue) 60%, transparent); animation: runPulse 1.6s ease-out infinite; }
+@keyframes runPulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--rt-blue) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 .scard__state { flex: 0 0 auto; }
-.scard__state .chip { cursor: pointer; }
 .scard__acts { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
 .scard__act { border: none; background: transparent; color: var(--rt-gray-400); padding: 7px; border-radius: 8px; display: grid; place-items: center; }
 .scard__act:hover { color: var(--rt-blue); background: var(--rt-blue-050); }
