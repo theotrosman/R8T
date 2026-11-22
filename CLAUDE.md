@@ -151,27 +151,22 @@ foco es **poca carga cognitiva**: el usuario elige con **selectores**, no escrib
   propósito: es la capa de entrada simple). La v2/index siguen siendo la versión avanzada
   (link "Versión avanzada" en la topbar de v3 → `v2.html`).
 
-## v5.html — Competencia: grupos + publicación de prueba
+## v5.html — Competencia: grupos + "dónde quedarías"
 
 Pedido del equipo de RT: **seguir publicaciones** (máx. **10**), **armar 1–2 grupos** y que el
-usuario pueda **elegir una publicación propia o una idea nueva que no está en producción** para
-compararse contra el grupo. No es repricing: es la antesala (entender dónde quedarías).
-(No hay v4.html en el repo: el pedido fue directamente "v5".)
+usuario pueda elegir **una publicación propia o una nueva (no publicada)** para compararse con el grupo.
 
-> Versión **simplificada** (feedback: "parece un volante de avión"): una idea por pantalla.
-> Se sacaron a propósito: seguir por link, filtro de tipo, título/palabras clave, costo y la curva
-> de ganancia (eso es terreno de Rentabilidad). No volver a sumarlos sin pedido.
+> Rehecha **en una sola pantalla** tras dos rondas de feedback ("muy cargada", "parece un volante
+> de avión", "sigue siendo muy compleja"). Sin pasos, sin puntaje, sin botones "Probar", sin gráficos.
+> Si hay que sumar algo, que sea de a una cosa y sin romper esta simpleza.
 
-- **Paso 1 · Seguir:** buscador sobre un "dump" de ejemplo (`MARKET` en `js/v5.js`). Tope `MAX_FOLLOW = 10`.
-- **Paso 2 · Grupos:** drag & drop (o botones "→ grupo") y **Armar grupos por mí** (por tipo;
-  si hay un solo tipo, por rango de precio). Rango de precios por grupo.
-- **Paso 3 · Comparar (sandbox, nada se publica):** idea nueva o copia de una propia (`MINE`).
-  Controles: grupo, precio, envío gratis, Full, cuotas, fotos. Resultado: **puntaje 0–100**
-  (`evaluate()`: precio vs mediana 40 %, envío gratis 25 %, Full 10 %, cuotas 15 %, fotos 10 %),
-  **tira de precios** con el punto "Vos" arrastrable y **comparativa con botones "Probar"**.
-- Ventas estimadas (didáctico): mediana del grupo × atributos × (precio/mediana)^-3.
-- **Autónomo:** sólo `icons.js` + `styles/v5.css` (clases con prefijo `v5-`). Estado en
-  `localStorage` `r8t.v5`; botón "Reiniciar demo" lo borra.
+- **Pestañas = grupos** ("+ Nuevo grupo", doble clic para renombrar, hasta 4).
+- **1 · Seguí publicaciones:** buscador sobre `MARKET` (datos de ejemplo). Lo que seguís entra al
+  grupo abierto; si ya está en otro grupo, el botón la mueve. Tope `MAX_FOLLOW = 10` en total.
+- **2 · Fijate dónde quedarías:** elegís "Una publicación nueva" o una de `MINE`, ponés precio y
+  envío gratis. Muestra una frase (puesto, precio típico del grupo, envío gratis) y el **ranking por
+  precio** del grupo con tu fila resaltada.
+- **Autónomo:** sólo `icons.js` + `styles/v5.css`. Estado en `localStorage` `r8t.v5b`.
 
 ## Diseño = Real Trends (NO cambiar sin motivo)
 
