@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800;900&display=swap">
   <link rel="stylesheet" href="styles/theme.css?v=14">
   <link rel="stylesheet" href="styles/app.css?v=14">
-  <link rel="stylesheet" href="styles/v5.css?v=1">
+  <link rel="stylesheet" href="styles/v5.css?v=2">
 </head>
 <body>
 <div class="app app--v5">
@@ -51,46 +51,24 @@
       <div class="v5__inner">
 
         <section class="v5-hero">
-          <span class="chip chip--teal">Demo con datos de ejemplo</span>
-          <h1>Probá tu publicación contra la competencia <em>antes</em> de publicarla</h1>
-          <p>Seguís a los que te compiten, los agrupás, y armás una publicación de prueba para ver dónde quedarías. Nada de esto se publica en Mercado Libre.</p>
+          <h1>Compará tu publicación con la competencia <em>antes</em> de publicarla</h1>
+          <p>Seguís a tus competidores, los agrupás y probás una publicación sin publicarla. <span class="muted">Datos de ejemplo.</span></p>
         </section>
 
-        <!-- Stepper -->
         <ol class="v5-steps" id="steps">
           <li data-step="1"><span class="v5-steps__n">1</span><span><b>Seguí publicaciones</b><small id="stepMeta1">0 de 10</small></span></li>
           <li data-step="2"><span class="v5-steps__n">2</span><span><b>Armá grupos</b><small id="stepMeta2">sin grupos</small></span></li>
-          <li data-step="3"><span class="v5-steps__n">3</span><span><b>Compará tu publicación</b><small id="stepMeta3">modo prueba</small></span></li>
+          <li data-step="3"><span class="v5-steps__n">3</span><span><b>Compará</b><small id="stepMeta3">modo prueba</small></span></li>
         </ol>
 
         <!-- ============ PASO 1 ============ -->
         <section class="v5-panel" id="step1">
-          <div class="v5-coach">
-            <span class="v5-coach__ic" data-ic="info"></span>
-            <div>
-              <b>¿Qué hago acá?</b> Tocá <b>Seguir</b> en las publicaciones que te compiten. Real Trends las mira por vos todos los días (precio, ventas, envío).
-              Podés seguir hasta <b>10</b>. Consejo: seguí de los dos tipos (in-ear y vincha) así después armás dos grupos.
-            </div>
-          </div>
-
+          <p class="v5-lead">Tocá <b>Seguir</b> en las publicaciones que te compiten. Hasta <b>10</b>.</p>
           <div class="v5-s1">
             <div>
-              <div class="v5-toolbar">
-                <label class="v5-search"><span data-ic="search"></span><input id="q" placeholder="Buscar en Mercado Libre: «auriculares bluetooth», una marca, un vendedor…" spellcheck="false"></label>
-                <div class="v5-seg" id="typeFilter">
-                  <button data-t="all" class="is-on">Todos</button>
-                  <button data-t="in">In-ear</button>
-                  <button data-t="over">Vincha</button>
-                </div>
-              </div>
-              <form class="v5-link" id="linkForm">
-                <span data-ic="plus"></span>
-                <input id="linkInput" placeholder="¿Ya tenés el link? Pegá una publicación de MeLi (ej. articulo.mercadolibre.com.ar/MLA-1234567890…)" spellcheck="false">
-                <button class="btn btn--soft btn--sm" type="submit">Seguir por link</button>
-              </form>
+              <label class="v5-search"><span data-ic="search"></span><input id="q" placeholder="Buscar: auriculares, una marca, un vendedor…" spellcheck="false"></label>
               <div class="v5-results" id="results"></div>
             </div>
-
             <aside class="v5-side">
               <div class="v5-quota">
                 <div class="v5-quota__top"><b>Seguidas</b><span id="quotaTxt">0 / 10</span></div>
@@ -98,85 +76,54 @@
                 <p class="muted" id="quotaHint">Todavía no seguís ninguna.</p>
               </div>
               <ul class="v5-mini" id="followedList"></ul>
-              <button class="btn btn--primary v5-next" id="next1" disabled>Siguiente: armar grupos <span data-ic="chevron"></span></button>
+              <button class="btn btn--primary v5-next" id="next1" disabled>Siguiente <span data-ic="chevron"></span></button>
             </aside>
           </div>
         </section>
 
         <!-- ============ PASO 2 ============ -->
         <section class="v5-panel hidden" id="step2">
-          <div class="v5-coach">
-            <span class="v5-coach__ic" data-ic="layers"></span>
-            <div>
-              <b>¿Para qué sirven los grupos?</b> Un grupo junta publicaciones que compiten <i>por el mismo comprador</i>. Así comparás contra «los de vincha premium» y no contra todo Mercado Libre.
-              Arrastrá las publicaciones a un grupo, o tocá <b>Armar grupos sugeridos</b> y lo hacemos por vos.
-            </div>
-          </div>
-
-          <div class="v5-toolbar">
-            <button class="btn btn--teal btn--sm" id="btnSuggest" data-ic="sparkles"><span>Armar grupos sugeridos</span></button>
+          <div class="v5-lead v5-lead--row">
+            <p>Juntá en un grupo las que compiten por el <b>mismo comprador</b>. Arrastralas, o:</p>
+            <button class="btn btn--teal btn--sm" id="btnSuggest" data-ic="sparkles"><span>Armar grupos por mí</span></button>
             <button class="btn btn--ghost btn--sm" id="btnNewGroup" data-ic="plus"><span>Grupo vacío</span></button>
-            <span class="muted v5-toolbar__hint">Tip: hacé clic en el nombre de un grupo para renombrarlo.</span>
           </div>
-
           <div class="v5-board" id="board"></div>
-
           <div class="v5-row-end">
             <button class="btn btn--ghost" data-go="1">Volver</button>
-            <button class="btn btn--primary" id="next2" disabled>Siguiente: compararme <span data-ic="chevron"></span></button>
+            <button class="btn btn--primary" id="next2" disabled>Siguiente <span data-ic="chevron"></span></button>
           </div>
         </section>
 
         <!-- ============ PASO 3 ============ -->
         <section class="v5-panel hidden" id="step3">
-          <div class="v5-sandbox">
-            <span data-ic="lock"></span>
-            <div><b>Modo prueba.</b> Lo que cambies acá <b>no se publica ni toca tus publicaciones reales</b>. Es un borrador para ver qué pasaría.</div>
-          </div>
+          <div class="v5-sandbox"><span data-ic="lock"></span><div><b>Modo prueba:</b> nada de esto se publica ni toca tus publicaciones.</div></div>
 
           <div class="v5-s3">
-            <!-- Izquierda: tu publicación -->
             <div class="v5-card">
-              <div class="v5-card__h">
-                <h3>Tu publicación de prueba</h3>
-              </div>
+              <h3 class="v5-card__title">Tu publicación</h3>
               <div class="v5-seg v5-seg--full" id="srcSeg">
                 <button data-src="new" class="is-on">Una idea nueva</button>
-                <button data-src="own">Partir de una mía</button>
+                <button data-src="own">Una mía</button>
               </div>
               <div id="ownPicker" class="v5-own hidden"></div>
 
               <label class="v5-f">
-                <span class="v5-f__l">Comparar contra el grupo</span>
+                <span class="v5-f__l">Contra el grupo</span>
                 <select id="groupSel"></select>
               </label>
-
               <label class="v5-f">
-                <span class="v5-f__l">Título <small id="titleCount">0/60</small></span>
-                <input id="fTitle" maxlength="60" spellcheck="false">
+                <span class="v5-f__l">Precio</span>
+                <div class="v5-money"><span>$</span><input id="fPrice" inputmode="numeric"></div>
               </label>
-              <div class="v5-kw" id="kw"></div>
-
-              <div class="v5-f2">
-                <label class="v5-f">
-                  <span class="v5-f__l">Precio de venta</span>
-                  <div class="v5-money"><span>$</span><input id="fPrice" inputmode="numeric"></div>
-                </label>
-                <label class="v5-f">
-                  <span class="v5-f__l">Tu costo <small>(para la ganancia)</small></span>
-                  <div class="v5-money"><span>$</span><input id="fCost" inputmode="numeric"></div>
-                </label>
-              </div>
-
               <div class="v5-toggles">
-                <label class="v5-tg"><input type="checkbox" id="fFree"><i></i><span><b>Envío gratis</b><small>lo pagás vos (≈ $<span id="shipCostTxt"></span>)</small></span></label>
-                <label class="v5-tg"><input type="checkbox" id="fFull"><i></i><span><b>Full</b><small>stock en depósito de MeLi</small></span></label>
+                <label class="v5-tg"><input type="checkbox" id="fFree"><i></i><b>Envío gratis</b></label>
+                <label class="v5-tg"><input type="checkbox" id="fFull"><i></i><b>Full</b></label>
               </div>
-
               <div class="v5-f2">
                 <label class="v5-f">
                   <span class="v5-f__l">Cuotas sin interés</span>
-                  <select id="fCuotas"><option value="0">Sin cuotas</option><option value="3">3 cuotas</option><option value="6">6 cuotas</option><option value="12">12 cuotas</option></select>
+                  <select id="fCuotas"><option value="0">Sin cuotas</option><option value="3">3</option><option value="6">6</option><option value="12">12</option></select>
                 </label>
                 <label class="v5-f">
                   <span class="v5-f__l">Fotos</span>
@@ -185,15 +132,13 @@
               </div>
             </div>
 
-            <!-- Derecha: resultado -->
             <div class="v5-res">
               <div class="v5-card v5-score">
-                <div class="v5-gauge" id="gauge">
+                <div class="v5-gauge">
                   <svg viewBox="0 0 120 70"><path class="v5-gauge__bg" d="M10 62a50 50 0 0 1 100 0"/><path class="v5-gauge__fg" id="gaugeFg" d="M10 62a50 50 0 0 1 100 0"/></svg>
                   <div class="v5-gauge__n"><b id="scoreN">0</b><small>/100</small></div>
                 </div>
                 <div class="v5-score__txt">
-                  <span class="v5-label">Qué tan competitiva sería</span>
                   <h2 id="scoreLabel">—</h2>
                   <p id="summary"></p>
                 </div>
@@ -202,7 +147,7 @@
               <div class="v5-card">
                 <div class="v5-card__h">
                   <h3>Dónde quedás por precio</h3>
-                  <span class="muted">Arrastrá el punto <b class="v5-you-pill">Vos</b> para probar otro precio</span>
+                  <span class="muted">Arrastrá a <b class="v5-you-pill">Vos</b></span>
                 </div>
                 <div class="v5-strip" id="strip">
                   <div class="v5-strip__track"></div>
@@ -216,19 +161,8 @@
               </div>
 
               <div class="v5-card">
-                <div class="v5-card__h"><h3>Vos vs. el grupo</h3><span class="muted">Tocá <b>Probar</b> y mirá cómo cambia todo</span></div>
+                <div class="v5-card__h"><h3>Vos vs. el grupo</h3><span class="muted">Tocá <b>Probar</b> y mirá qué cambia</span></div>
                 <div class="v5-cmp" id="cmp"></div>
-              </div>
-
-              <div class="v5-card">
-                <div class="v5-card__h">
-                  <h3>Cuánto ganarías según el precio</h3>
-                  <button class="btn btn--soft btn--sm" id="btnBest" data-ic="target"><span>Usar el mejor precio</span></button>
-                </div>
-                <div class="v5-chart" id="chart"></div>
-                <div class="v5-kpis" id="kpis"></div>
-                <p class="v5-insight" id="chartInsight"></p>
-                <p class="v5-foot">Estimación didáctica: ventas según precio y atributos del grupo, comisión ≈ 14 %, IIBB ≈ 3,5 % y envío gratis a tu cargo. No es contabilidad exacta.</p>
               </div>
             </div>
           </div>
@@ -246,6 +180,6 @@
 <div class="toasts" id="toasts"></div>
 
 <script src="js/icons.js?v=14"></script>
-<script src="js/v5.js?v=1"></script>
+<script src="js/v5.js?v=2"></script>
 </body>
 </html>

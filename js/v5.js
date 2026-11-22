@@ -122,31 +122,27 @@
      ============================================================ */
   function renderResults() {
     const q = norm(S.q.trim());
-    const list = all().filter(l => (S.type === 'all' || l.type === S.type) &&
-      (!q || norm(l.title + ' ' + l.seller + ' ' + l.brand).includes(q)));
+    const list = all().filter(l => (!q || norm(l.title + ' ' + l.seller + ' ' + l.brand).includes(q)));
     const full = S.followed.length >= MAX_FOLLOW;
     $('#results').innerHTML = list.length ? list.map(l => {
       const on = S.followed.includes(l.id);
       return `<article class="v5-item${on ? ' is-following' : ''}">
         <div class="v5-item__top">${thumb(l)}
-          <div><div class="v5-item__title">${esc(l.title)}</div><div class="v5-item__seller">${esc(l.seller)} · ${esc(l.rep)}</div></div>
+          <div><div class="v5-item__title">${esc(l.title)}</div><div class="v5-item__seller">${esc(l.seller)}</div></div>
         </div>
         <div class="v5-price">${money(l.price)}${l.list ? `<s>${money(l.list)}</s>` : ''}</div>
         <div class="v5-tags">
           ${l.free ? '<span class="v5-tag v5-tag--free">Envío gratis</span>' : ''}
           ${l.full ? '<span class="v5-tag v5-tag--full">FULL</span>' : ''}
-          ${l.cuotas ? `<span class="v5-tag">${l.cuotas} cuotas s/int.</span>` : ''}
-          <span class="v5-tag">${l.rating.toFixed(1).replace('.', ',')} ★</span>
-          ${l.sim ? '<span class="v5-tag v5-tag--sim">por link · simulada</span>' : ''}
         </div>
         <div class="v5-item__bottom">
-          <span class="v5-item__sold">${esc(l.sold)} vendidos · ≈${l.sales30}/mes</span>
+          <span class="v5-item__sold">≈${l.sales30} ventas/mes</span>
           <button class="v5-follow${on ? ' is-on' : ''}" data-follow="${l.id}" ${!on && full ? 'disabled title="Llegaste al máximo de 10"' : ''}>
             ${on ? icon('check') + 'Siguiendo' : icon('plus') + 'Seguir'}
           </button>
         </div>
       </article>`;
-    }).join('') : `<div class="v5-empty">No encontramos publicaciones con «${esc(S.q)}». Probá con otra palabra o pegá el link.</div>`;
+    }).join('') : `<div class="v5-empty">No encontramos publicaciones con «${esc(S.q)}». Probá con otra palabra.</div>`;
   }
 
   function renderSide() {
@@ -177,27 +173,6 @@
       toast('Siguiendo: ' + esc(l.brand) + ' · ' + money(l.price), 'check');
     }
     save(); renderAll();
-  }
-
-  /* Seguir por link: si el ID está en el dump lo usa; si no, genera una simulada (determinística). */
-  function followByLink(raw) {
-    const m = String(raw).match(/ML([A-Z])-?(\d{6,})/i);
-    if (!m) { toast('Eso no parece un link de Mercado Libre', 'alert'); return; }
-    const id = ('ML' + m[1] + m[2]).toUpperCase();
-    if (!byId(id)) {
-      let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-      const rnd = () => { h = (h * 1103515245 + 12345) >>> 0; return (h % 1000) / 1000; };
-      const type = rnd() > 0.5 ? 'over' : 'in';
-      const base = type === 'in' ? 20000 + rnd() * 35000 : 50000 + rnd() * 100000;
-      S.extra.push({
-        id, type, brand: 'MeLi', color: '#64748b', sim: true,
-        title: 'Publicación ' + id + ' (' + typeLbl(type) + ')', seller: 'VENDEDOR ' + id.slice(-4), rep: 'Reputación verde',
-        price: roundTo(base, 500) - 1, free: rnd() > 0.35, full: rnd() > 0.6, cuotas: [0, 3, 6, 12][Math.floor(rnd() * 4)],
-        photos: 3 + Math.floor(rnd() * 7), rating: 4 + Math.round(rnd() * 9) / 10, sold: '+100', sales30: 30 + Math.floor(rnd() * 150),
-      });
-    }
-    if (!S.followed.includes(id)) toggleFollow(id); else toast('Ya la estabas siguiendo', 'info');
-    $('#linkInput').value = '';
   }
 
   /* ============================================================
@@ -240,7 +215,7 @@
       <div class="v5-col__drop">${pool.map(id => chipCard(id, false)).join('') || '<div class="v5-col__hint">Todas tus publicaciones seguidas ya están en un grupo.</div>'}</div>
     </div>`;
     if (!S.groups.length) {
-      html += `<div class="v5-col"><div class="v5-col__hint" style="margin-top:40px">Todavía no hay grupos.<br>Tocá <b>Armar grupos sugeridos</b> o creá uno vacío.</div></div>`;
+      html += `<div class="v5-col"><div class="v5-col__hint" style="margin-top:40px">Todavía no hay grupos.<br>Tocá <b>Armar grupos por mí</b>.</div></div>`;
     }
     S.groups.forEach(g => {
       const st = groupStats(g.items);
@@ -257,11 +232,7 @@
           <div class="v5-range__bar">${st.ls.map(l => `<i style="left:${st.max > st.min ? (l.price - st.min) / (st.max - st.min) * 100 : 50}%;background:${g.color}" title="${esc(l.brand)} ${money(l.price)}"></i>`).join('')}</div>
           <div class="v5-range__lbl"><span>${moneyShort(st.min)}</span><span>mediana ${moneyShort(st.med)}</span><span>${moneyShort(st.max)}</span></div>
         </div>
-        <div class="v5-stats">
-          <div class="v5-stat"><small>Ventas/mes</small><b>≈${st.salesTot}</b></div>
-          <div class="v5-stat"><small>Envío gratis</small><b>${Math.round(st.free * 100)} %</b></div>
-          <div class="v5-stat"><small>Líder</small><b title="${esc(st.leader.title)}">${esc(st.leader.brand)}</b></div>
-        </div>` : ''}
+` : ''}
       </div>`;
     });
     $('#board').innerHTML = html;
@@ -352,9 +323,8 @@
       full: d.full ? 1 : 1 - st.full,
       cuotas: st.cuotas <= 0 || d.cuotas >= st.cuotas ? 1 : d.cuotas / st.cuotas,
       photos: Math.min(1, d.photos / st.photos),
-      kw: kws.length ? kws.filter(k => norm(d.title).includes(k.k)).length / kws.length : 1,
     };
-    const W = { price: .35, free: .20, full: .10, cuotas: .15, photos: .10, kw: .10 };
+    const W = { price: .40, free: .25, full: .10, cuotas: .15, photos: .10 };
     let score = 0, np = 0;
     for (const k in W) { score += W[k] * parts[k]; if (k !== 'price') np += W[k] * parts[k]; }
     np /= (1 - W.price);
@@ -363,15 +333,6 @@
     const ship = d.free ? SHIP[st.type] : 0;
     const unit = price * (1 - COMMISSION - IIBB) - ship - d.cost;
     return { score: Math.round(score * 100), parts, r, sales, unit, month: sales * unit, price, ship };
-  }
-
-  function bestPrice(d, st, kws) {
-    let best = null;
-    for (let p = st.med * 0.6; p <= st.med * 1.45; p += st.med * 0.01) {
-      const e = evaluate(d, st, kws, roundTo(p, 500) - 1);
-      if (!best || e.month > best.month) best = e;
-    }
-    return best;
   }
 
   let lastScore = null;
@@ -386,17 +347,15 @@
   function syncForm() {
     const d = S.draft;
     const set = (sel, v) => { const el = $(sel); if (document.activeElement !== el) el.value = v; };
-    set('#fTitle', d.title);
     set('#fPrice', Math.round(d.price).toLocaleString('es-AR'));
-    set('#fCost', Math.round(d.cost).toLocaleString('es-AR'));
+    $('#fPrice').addEventListener('blur', () => syncForm());
     $('#fFree').checked = d.free;
     $('#fFull').checked = d.full;
     $('#fCuotas').value = String(d.cuotas);
     $('#fPhotos').textContent = d.photos;
-    $('#titleCount').textContent = d.title.length + '/60';
     $$('#srcSeg button').forEach(b => b.classList.toggle('is-on', b.dataset.src === S.src));
     $('#ownPicker').classList.toggle('hidden', S.src !== 'own');
-    $('#ownPicker').innerHTML = '<div class="v5-own__note">Copiamos sus datos al borrador. La publicación real no se toca.</div>' +
+    $('#ownPicker').innerHTML = '<div class="v5-own__note">Copiamos sus datos. La original no se toca.</div>' +
       MINE.map(m => `<button data-own="${m.id}" class="${S.ownId === m.id ? 'is-on' : ''}">${thumb(m, true)}<span><b>${esc(m.title)}</b><small>${money(m.price)} · ${typeLbl(m.type)}</small></span></button>`).join('');
     $('#groupSel').innerHTML = S.groups.filter(g => g.items.length >= 2)
       .map(g => `<option value="${g.id}" ${g.id === S.gid ? 'selected' : ''}>${esc(g.name)} (${g.items.length} publicaciones)</option>`).join('');
@@ -411,11 +370,6 @@
     const d = S.draft;
     const kws = keywords(st);
     const e = evaluate(d, st, kws);
-    $('#shipCostTxt').textContent = SHIP[st.type].toLocaleString('es-AR');
-
-    // --- Palabras clave
-    $('#kw').innerHTML = kws.length ? '<span class="v5-kw__lbl">Palabras que usa el grupo (tocá para sumarlas):</span>' +
-      kws.map(k => { const on = norm(d.title).includes(k.k); return `<button class="${on ? 'is-in' : ''}" data-kw="${esc(k.w)}" ${on ? 'disabled' : ''}>${on ? '✓ ' : '+ '}${esc(k.w.toLowerCase())} <small>${Math.round(k.share * 100)}%</small></button>`; }).join('') : '';
 
     // --- Puntaje
     const sc = e.score;
@@ -447,8 +401,7 @@
       `Con <b>${money(d.price)}</b> estarías <b>${Math.abs(Math.round(diff * 100))} % ${diff >= 0 ? 'arriba' : 'abajo'}</b> de la mediana de «${esc(g.name)}» ` +
       `y serías la <b>${pos}ª más barata de ${tot}</b>. ` +
       (gaps.length ? `Lo que más te frena: ${gaps[0].txt}. ` : 'No te falta nada clave: ya es cuestión de precio. ') +
-      `Estimamos <b>≈ ${e.sales} ventas/mes</b>.` +
-      (e.unit < 0 ? ` <b style="color:var(--danger)">Ojo: a este precio perdés ${money(-e.unit)} en cada venta.</b>` : '');
+      `Estimamos <b>≈ ${e.sales} ventas/mes</b>.`;
 
     $('#rank').innerHTML = pos === 1 ? `Serías <b>la más barata del grupo</b>. Ojo: bajar más sólo te come margen.`
       : `Hay <b>${cheaper}</b> publicaci${cheaper === 1 ? 'ón más barata' : 'ones más baratas'} que vos. ` +
@@ -456,7 +409,6 @@
 
     renderStrip(st, g, e);
     renderCmp(st, d, e, kws);
-    renderChart(st, d, kws, e);
 
     $('#stepMeta3').textContent = 'puntaje ' + sc + '/100';
   }
@@ -545,7 +497,6 @@
     const okIc = icon('check'), warnIc = icon('alert'), badIc = icon('x');
     const st3 = (s) => `<span class="v5-st v5-st--${s}">${s === 'ok' ? okIc : s === 'warn' ? warnIc : badIc}</span>`;
     const bar = v => `<div class="v5-minibar"><i style="width:${Math.round(clamp(v, 0, 1) * 100)}%"></i></div>`;
-    const covered = kws.filter(k => norm(d.title).includes(k.k)).length;
     const modeCuotas = Math.max(...[0, 3, 6, 12].filter(c => st.ls.filter(l => l.cuotas >= c).length / st.n >= 0.5));
     const rows = [
       { k: 'Precio', you: money(d.price) + ` <small class="muted">${pct(e.r - 1)}</small>`, grp: 'mediana ' + money(st.med),
@@ -558,9 +509,6 @@
         s: d.cuotas >= modeCuotas ? 'ok' : 'warn', fix: d.cuotas < modeCuotas ? 'cuotas' : null, arg: modeCuotas },
       { k: 'Fotos', you: d.photos, grp: 'promedio ' + st.photos.toFixed(1).replace('.', ','),
         s: d.photos >= st.photos ? 'ok' : d.photos >= st.photos - 2 ? 'warn' : 'bad', fix: d.photos < st.photos ? 'photos' : null },
-      { k: 'Título', you: `${covered} de ${kws.length} palabras`, grp: 'palabras clave del grupo',
-        s: !kws.length || covered === kws.length ? 'ok' : covered >= kws.length / 2 ? 'warn' : 'bad',
-        fix: kws.some(k => !norm(d.title).includes(k.k) && (d.title + ' ' + k.w).length <= 60) ? 'kw' : null },
     ];
     $('#cmp').innerHTML = `<div class="v5-cmp__row v5-cmp__row--head"><span></span><span>Qué</span><span>Vos</span><span>El grupo</span><span></span></div>` +
       rows.map(r => `<div class="v5-cmp__row">${st3(r.s)}<span class="v5-cmp__k">${r.k}</span><span class="v5-cmp__you">${r.you}</span><span class="v5-cmp__grp">${r.grp}</span>
@@ -576,63 +524,10 @@
     if (kind === 'full') { d.full = true; what = 'Publicación en Full'; }
     if (kind === 'cuotas') { d.cuotas = Number(arg) || 6; what = d.cuotas + ' cuotas sin interés'; }
     if (kind === 'photos') { d.photos = Math.min(12, Math.ceil(st.photos) + 1); what = d.photos + ' fotos'; }
-    if (kind === 'kw') {
-      kws.filter(k => !norm(d.title).includes(k.k)).forEach(k => { if ((d.title + ' ' + k.w).length <= 60) d.title += ' ' + k.w; });
-      what = 'Título con las palabras del grupo';
-    }
     S.dirty = true;
     const after = evaluate(d, st, kws).score;
     save(); renderStep3();
     toast(`${what} · ${after >= before ? '+' : ''}${after - before} puntos`, 'sparkles');
-  }
-
-  /* --- Curva de ganancia mensual según precio --- */
-  function renderChart(st, d, kws, cur) {
-    const box = $('#chart');
-    const W = Math.max(320, box.clientWidth || 640), H = 190, L = 54, R = 14, T = 22, B = 24;
-    const pts = [];
-    for (let i = 0; i <= 60; i++) {
-      const p = st.med * (0.6 + 0.85 * i / 60);
-      pts.push(evaluate(d, st, kws, p));
-    }
-    const best = bestPrice(d, st, kws);
-    const ys = pts.map(p => p.month).concat([cur.month, 0]);
-    const yMin = Math.min(...ys), yMax = Math.max(...ys) * 1.12 || 1;
-    const pMin = pts[0].price, pMax = pts[pts.length - 1].price;
-    const sx = p => L + (clamp(p, pMin, pMax) - pMin) / (pMax - pMin) * (W - L - R);
-    const sy = v => T + (yMax - v) / (yMax - yMin || 1) * (H - T - B);
-    const line = pts.map((p, i) => (i ? 'L' : 'M') + sx(p.price).toFixed(1) + ' ' + sy(p.month).toFixed(1)).join(' ');
-    const area = line + ` L${sx(pMax).toFixed(1)} ${sy(Math.max(0, yMin)).toFixed(1)} L${sx(pMin).toFixed(1)} ${sy(Math.max(0, yMin)).toFixed(1)} Z`;
-    const ticks = [0, 1, 2, 3].map(i => pMin + (pMax - pMin) * i / 3);
-    const meOut = cur.price < pMin || cur.price > pMax;
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
-      <defs><linearGradient id="v5grad" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#0065F3" stop-opacity=".18"/><stop offset="1" stop-color="#0065F3" stop-opacity="0"/></linearGradient></defs>
-      <line class="zero" x1="${L}" x2="${W - R}" y1="${sy(0)}" y2="${sy(0)}"/>
-      <text class="ax" x="${L - 8}" y="${sy(0) + 3}" text-anchor="end">$ 0</text>
-      <text class="ax" x="${L - 8}" y="${T + 3}" text-anchor="end">${moneyShort(yMax)}</text>
-      ${ticks.map(p => `<text class="ax" x="${sx(p)}" y="${H - 6}" text-anchor="middle">${moneyShort(p)}</text>`).join('')}
-      <path class="area" d="${area}"/>
-      <path class="line" d="${line}"/>
-      <g class="best"><line x1="${sx(best.price)}" x2="${sx(best.price)}" y1="${T}" y2="${H - B}"/><circle cx="${sx(best.price)}" cy="${sy(best.month)}" r="6"/>
-        <text x="${sx(best.price)}" y="${T - 8}" text-anchor="middle">Mejor: ${money(best.price)}</text></g>
-      ${meOut ? '' : `<g class="me"><circle cx="${sx(cur.price)}" cy="${sy(cur.month)}" r="8"/><text x="${sx(cur.price) + 12}" y="${sy(cur.month) + 4}">Vos</text></g>`}
-    </svg>`;
-    const gap = best.month - cur.month;
-    $('#kpis').innerHTML = `
-      <div class="v5-kpi"><small>Ventas / mes</small><b>≈ ${cur.sales}</b></div>
-      <div class="v5-kpi"><small>Ganás por venta</small><b class="${cur.unit < 0 ? 'neg' : ''}">${money(cur.unit)}</b></div>
-      <div class="v5-kpi"><small>Ganancia / mes</small><b class="${cur.month < 0 ? 'neg' : 'pos'}">${moneyShort(cur.month)}</b></div>
-      <div class="v5-kpi"><small>Te estás perdiendo</small><b class="${gap > 1000 ? 'neg' : 'pos'}">${gap > 1000 ? moneyShort(gap) + '/mes' : 'nada'}</b></div>`;
-    $('#chartInsight').innerHTML = best.price > cur.price * 1.03 && gap > 1000
-      ? `<b>Ojo:</b> ser el más barato no es lo mismo que ganar más. Subiendo a <b>${money(best.price)}</b> venderías menos (≈${best.sales}/mes) pero ganarías <b>${moneyShort(gap)} más por mes</b>.`
-      : best.price < cur.price * 0.97 && gap > 1000
-      ? `Bajando a <b>${money(best.price)}</b> venderías bastante más (≈${best.sales}/mes) y la ganancia total sube <b>${moneyShort(gap)}/mes</b>.`
-      : 'Estás cerca del precio que más te deja. De acá en adelante, mover el precio te cambia poco la ganancia.';
-    $('#btnBest').disabled = Math.abs(best.price - cur.price) < 600;
-    $('#btnBest').onclick = () => {
-      S.draft.price = best.price; S.dirty = true; save(); renderStep3();
-      toast('Precio en ' + money(best.price) + ' · +' + moneyShort(gap) + '/mes estimado', 'target');
-    };
   }
 
   /* ============================================================
@@ -681,7 +576,7 @@
   function bind() {
     $('#steps').addEventListener('click', e => { const li = e.target.closest('li'); if (li) go(+li.dataset.step); });
     document.addEventListener('click', e => {
-      const t = e.target.closest('[data-follow],[data-unfollow],[data-move],[data-delgroup],[data-go],[data-fix],[data-kw],[data-own],[data-src],[data-t],[data-ph]');
+      const t = e.target.closest('[data-follow],[data-unfollow],[data-move],[data-delgroup],[data-go],[data-fix],[data-own],[data-src],[data-ph]');
       if (!t) return;
       const ds = t.dataset;
       if (ds.follow) toggleFollow(ds.follow);
@@ -690,7 +585,6 @@
       else if (ds.delgroup) { S.groups = S.groups.filter(g => g.id !== ds.delgroup); save(); renderAll(); }
       else if (ds.go) go(+ds.go);
       else if (ds.fix) applyFix(ds.fix, ds.arg);
-      else if (ds.kw) { const d = S.draft; if ((d.title + ' ' + ds.kw).length <= 60) { d.title += ' ' + ds.kw; S.dirty = true; save(); renderStep3(); } else toast('El título llegó a 60 caracteres', 'alert'); }
       else if (ds.own) {
         const m = MINE.find(x => x.id === ds.own);
         S.ownId = m.id; S.dirty = true;
@@ -704,12 +598,10 @@
         if (ds.src === 'new') { S.ownId = null; S.dirty = false; S.draft = templateDraft(groupStats(curGroup().items)); }
         save(); renderStep3();
       }
-      else if (ds.t) { S.type = ds.t; $$('#typeFilter button').forEach(b => b.classList.toggle('is-on', b === t)); renderResults(); }
       else if (ds.ph) { S.draft.photos = clamp(S.draft.photos + Number(ds.ph), 1, 12); S.dirty = true; save(); renderStep3(); }
     });
 
     $('#q').addEventListener('input', e => { S.q = e.target.value; renderResults(); });
-    $('#linkForm').addEventListener('submit', e => { e.preventDefault(); followByLink($('#linkInput').value); });
     $('#next1').addEventListener('click', () => go(2));
     $('#next2').addEventListener('click', () => go(3));
     $('#btnSuggest').addEventListener('click', suggestGroups);
@@ -737,10 +629,7 @@
 
     // Formulario del borrador
     const num = v => Number(String(v).replace(/\D/g, '')) || 0;
-    $('#fTitle').addEventListener('input', e => { S.draft.title = e.target.value; S.dirty = true; save(); renderStep3(); });
     $('#fPrice').addEventListener('input', e => { const v = num(e.target.value); if (v >= 1000) { S.draft.price = v; S.dirty = true; save(); renderStep3(); } });
-    $('#fCost').addEventListener('input', e => { S.draft.cost = num(e.target.value); S.dirty = true; save(); renderStep3(); });
-    ['#fPrice', '#fCost'].forEach(s => $(s).addEventListener('blur', () => syncForm()));
     $('#fFree').addEventListener('change', e => { S.draft.free = e.target.checked; S.dirty = true; save(); renderStep3(); });
     $('#fFull').addEventListener('change', e => { S.draft.full = e.target.checked; S.dirty = true; save(); renderStep3(); });
     $('#fCuotas').addEventListener('change', e => { S.draft.cuotas = +e.target.value; S.dirty = true; save(); renderStep3(); });
@@ -758,7 +647,6 @@
   /* ---------- Arranque ---------- */
   hydrateIcons();
   $('#q').value = S.q || '';
-  $$('#typeFilter button').forEach(b => b.classList.toggle('is-on', b.dataset.t === S.type));
   bind();
   renderAll();
 })();

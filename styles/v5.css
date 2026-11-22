@@ -285,3 +285,13 @@
 
 /* El ícono chevron del set apunta hacia abajo: en "Siguiente" lo giramos */
 .v5 [data-ic="chevron"] svg { transform: rotate(-90deg); }
+
+/* ---------- v5 simplificada ---------- */
+.v5-lead { margin: 0 0 14px; font-size: 15px; color: var(--rt-gray); }
+.v5-lead b { color: var(--rt-ink); }
+.v5-lead--row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.v5-lead--row p { margin: 0; }
+.v5-s1 .v5-search { margin-bottom: 14px; }
+.v5-card__title { font-size: 16px; margin-bottom: 12px; }
+.v5-tg b { font-size: 13.5px; }
+.v5-hero p .muted { font-size: 13px; }

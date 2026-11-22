@@ -158,18 +158,18 @@ usuario pueda **elegir una publicación propia o una idea nueva que no está en 
 compararse contra el grupo. No es repricing: es la antesala (entender dónde quedarías).
 (No hay v4.html en el repo: el pedido fue directamente "v5".)
 
-- **Paso 1 · Seguir:** buscador sobre un "dump" de ejemplo (`MARKET` en `js/v5.js`), filtro
-  in-ear/vincha, seguir por **link de MeLi** (si el ID no está en el dump genera una publicación
-  simulada determinística). Tope duro `MAX_FOLLOW = 10`.
-- **Paso 2 · Grupos:** tablero con drag & drop (o botones "→ grupo"), **Armar grupos sugeridos**
-  (por tipo; si hay un solo tipo, por rango de precio), renombrar inline, stats por grupo.
-- **Paso 3 · Publicación de prueba (sandbox, nada se publica):** idea nueva o copia de una propia
-  (`MINE`). Muestra **puntaje 0–100** (`evaluate()`: precio vs mediana 35 %, envío gratis 20 %,
-  Full 10 %, cuotas 15 %, fotos 10 %, palabras clave del título 10 %), **tira de precios** con el
-  punto "Vos" arrastrable, **comparativa con botones "Probar"** que aplican el arreglo y muestran
-  cuántos puntos suma, y **curva de ganancia mensual según precio** con el mejor precio marcado.
-- Modelo de ventas didáctico: mediana de ventas del grupo × atributos × (precio/mediana)^-3.
-  Comisión 14 %, IIBB 3,5 %, envío gratis a cargo del vendedor. Reemplazar con datos reales.
+> Versión **simplificada** (feedback: "parece un volante de avión"): una idea por pantalla.
+> Se sacaron a propósito: seguir por link, filtro de tipo, título/palabras clave, costo y la curva
+> de ganancia (eso es terreno de Rentabilidad). No volver a sumarlos sin pedido.
+
+- **Paso 1 · Seguir:** buscador sobre un "dump" de ejemplo (`MARKET` en `js/v5.js`). Tope `MAX_FOLLOW = 10`.
+- **Paso 2 · Grupos:** drag & drop (o botones "→ grupo") y **Armar grupos por mí** (por tipo;
+  si hay un solo tipo, por rango de precio). Rango de precios por grupo.
+- **Paso 3 · Comparar (sandbox, nada se publica):** idea nueva o copia de una propia (`MINE`).
+  Controles: grupo, precio, envío gratis, Full, cuotas, fotos. Resultado: **puntaje 0–100**
+  (`evaluate()`: precio vs mediana 40 %, envío gratis 25 %, Full 10 %, cuotas 15 %, fotos 10 %),
+  **tira de precios** con el punto "Vos" arrastrable y **comparativa con botones "Probar"**.
+- Ventas estimadas (didáctico): mediana del grupo × atributos × (precio/mediana)^-3.
 - **Autónomo:** sólo `icons.js` + `styles/v5.css` (clases con prefijo `v5-`). Estado en
   `localStorage` `r8t.v5`; botón "Reiniciar demo" lo borra.
 
