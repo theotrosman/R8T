@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Competencia · Grupos — Real Trends</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <meta name="description" content="Seguí publicaciones de tu competencia, armá grupos y fijate dónde quedaría tu publicación. Una función de Real Trends.">
+  <meta name="description" content="Seguí publicaciones de tu competencia, armá grupos y fijate dónde quedaría tu publicación antes de publicarla. Una función de Real Trends.">
   <meta name="theme-color" content="#0065F3">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Real Trends">
   <meta property="og:title" content="Competencia · Grupos — Real Trends">
-  <meta property="og:description" content="Seguí publicaciones, armá grupos y mirá dónde quedaría tu publicación antes de publicarla.">
+  <meta property="og:description" content="Seguí a tu competencia, agrupala y fijate en qué puesto quedarías.">
   <meta property="og:image" content="https://r8-t.vercel.app/assets/og.svg">
   <meta property="og:url" content="https://r8-t.vercel.app/v5.html">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,10 +18,11 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800;900&display=swap">
   <link rel="stylesheet" href="styles/theme.css?v=14">
   <link rel="stylesheet" href="styles/app.css?v=14">
-  <link rel="stylesheet" href="styles/v5.css?v=3">
+  <link rel="stylesheet" href="styles/v3.css?v=3">
+  <link rel="stylesheet" href="styles/v5.css?v=4">
 </head>
 <body>
-<div class="app app--v5">
+<div class="app app--v3">
 
   <nav class="rail">
     <div class="rail__logo" title="Real Trends"><img src="assets/logo-realtrends.svg" alt="Real Trends"></div>
@@ -46,45 +47,173 @@
       </div>
     </header>
 
-    <div class="v5" id="scroller">
-      <div class="v5__inner">
+    <div class="v3" id="scroller">
+      <div class="v3__inner">
 
-        <h1 class="v5-title">Tus grupos de competencia</h1>
+        <!-- ============ INICIO ============ -->
+        <section id="home">
+          <div class="empty">
+            <div class="empty__badge"><span class="chip chip--teal" data-ic="competencia">Competencia</span></div>
+            <h1>Mirá a tu competencia y fijate dónde quedarías</h1>
+            <p class="empty__sub">Elegís a quién seguir, lo ordenamos en grupos y comparás tu publicación contra ellos. Sin publicar nada.</p>
+          </div>
 
-        <div class="v5-tabs" id="tabs"></div>
-
-        <div class="v5-grid">
-          <!-- Izquierda: seguir publicaciones -->
-          <section class="v5-card">
-            <div class="v5-card__h">
-              <h2><span class="v5-n">1</span> Seguí publicaciones</h2>
-              <span class="v5-count" id="count">0 / 10</span>
+          <div class="promise">
+            <div class="pcard">
+              <div class="pcard__n">1</div>
+              <h3>Seguí publicaciones</h3>
+              <p>Elegí <b>hasta 10</b> publicaciones que te compiten.</p>
             </div>
-            <label class="v5-search"><span data-ic="search"></span><input id="q" placeholder="Buscar en Mercado Libre…" spellcheck="false"></label>
-            <ul class="v5-list" id="results"></ul>
-          </section>
+            <div class="pcard">
+              <div class="pcard__n">2</div>
+              <h3>Las agrupamos</h3>
+              <p>Te las dejamos <b>ordenadas en grupos</b>. Vos solo revisás.</p>
+            </div>
+            <div class="pcard">
+              <div class="pcard__n">3</div>
+              <h3>Comparate</h3>
+              <p>Con una publicación tuya o <b>una que todavía no publicaste</b>.</p>
+            </div>
+          </div>
 
-          <!-- Derecha: comparar -->
-          <section class="v5-card">
-            <div class="v5-card__h">
-              <h2><span class="v5-n">2</span> Fijate dónde quedarías</h2>
+          <div style="text-align:center">
+            <button class="btn btn--primary" id="btnStart" data-ic="rocket" style="padding:13px 26px;font-size:15px"><span>Empezar</span></button>
+          </div>
+
+          <div class="saved hidden" id="savedWrap">
+            <div class="saved__h">
+              <h3>Mis grupos</h3>
+              <button class="btn btn--soft btn--sm" id="btnEdit" data-ic="edit"><span>Editar</span></button>
             </div>
-            <div class="v5-mine">
-              <label class="v5-f">
-                <span>Tu publicación</span>
-                <select id="mine"></select>
-              </label>
-              <label class="v5-f">
-                <span>Precio</span>
-                <div class="v5-money"><b>$</b><input id="price" inputmode="numeric"></div>
-              </label>
-              <label class="v5-check"><input type="checkbox" id="free"> Envío gratis</label>
+            <div class="saved__list" id="savedList"></div>
+          </div>
+        </section>
+
+        <!-- ============ WIZARD ============ -->
+        <section id="wizard" hidden>
+          <div class="steps" id="steps">
+            <div class="steps__item" data-step="1"><div class="steps__dot">1</div><div class="steps__label">Seguir</div></div>
+            <div class="steps__line"></div>
+            <div class="steps__item" data-step="2"><div class="steps__dot">2</div><div class="steps__label">Grupos</div></div>
+            <div class="steps__line"></div>
+            <div class="steps__item" data-step="3"><div class="steps__dot">3</div><div class="steps__label">Tu publicación</div></div>
+            <div class="steps__line"></div>
+            <div class="steps__item" data-step="4"><div class="steps__dot">4</div><div class="steps__label">Resultado</div></div>
+          </div>
+
+          <!-- ---- Paso 1 ---- -->
+          <div class="pane" data-pane="1">
+            <div class="stephead">
+              <div class="stephead__k">Paso 1 de 3</div>
+              <h2>¿A quién querés seguir?</h2>
+              <p>Tocá las publicaciones que le compiten a la tuya. Podés elegir hasta 10.</p>
             </div>
-            <p class="v5-hint">Es una prueba: no se publica ni cambia nada en Mercado Libre.</p>
-            <p class="v5-verdict" id="verdict"></p>
-            <ol class="v5-rank" id="rank"></ol>
-          </section>
-        </div>
+            <div class="picker">
+              <div class="picker__search"><span data-ic="search"></span><input id="q" placeholder="Buscar por producto, marca o vendedor…" spellcheck="false"><span class="v5-counter" id="counter">0 de 10</span></div>
+              <div class="picker__list v5-tall" id="market"></div>
+            </div>
+          </div>
+
+          <!-- ---- Paso 2 ---- -->
+          <div class="pane" data-pane="2">
+            <div class="stephead">
+              <div class="stephead__k">Paso 2 de 3</div>
+              <h2>Te las dejamos agrupadas</h2>
+              <p>Un grupo junta las publicaciones que compiten por el mismo comprador. Revisalos y, si querés, cambiá algo.</p>
+            </div>
+            <div class="mpguide">
+              <div class="mpguide__ic" data-ic="sparkles"></div>
+              <div class="mpguide__body">
+                <div class="mpguide__t" id="groupWhy">Las separamos por tipo de producto</div>
+                <div class="mpguide__d">Podés cambiarle el nombre a cada grupo o pasar una publicación al otro con la flechita.</div>
+              </div>
+            </div>
+            <div class="opts opts--2" id="groups"></div>
+            <button class="v5-link" id="btnOneGroup"></button>
+          </div>
+
+          <!-- ---- Paso 3 ---- -->
+          <div class="pane" data-pane="3">
+            <div class="stephead">
+              <div class="stephead__k">Paso 3 de 3</div>
+              <h2>¿Con qué publicación te querés comparar?</h2>
+              <p>Es una prueba: no se publica ni se cambia nada en Mercado Libre.</p>
+            </div>
+            <div class="opts opts--2" id="modeOpts">
+              <button class="opt" data-mode="own">
+                <span class="opt__ic" data-ic="producto"></span>
+                <span class="opt__body">
+                  <span class="opt__title">Una que ya tengo</span>
+                  <span class="opt__desc">Elegila de tus publicaciones.</span>
+                </span>
+                <span class="opt__check" data-ic="check"></span>
+              </button>
+              <button class="opt" data-mode="new">
+                <span class="opt__ic" data-ic="sparkles"></span>
+                <span class="opt__body">
+                  <span class="opt__title">Una nueva</span>
+                  <span class="opt__desc">Algo que todavía no publicaste.</span>
+                </span>
+                <span class="opt__check" data-ic="check"></span>
+              </button>
+            </div>
+
+            <div class="picker hidden" id="ownPicker"></div>
+
+            <div class="field hidden" id="newTitleField">
+              <label class="field__label" for="newTitle">¿Cómo se llamaría?</label>
+              <input class="input" id="newTitle" maxlength="60" placeholder="Ej: Auriculares Bluetooth In-ear con micrófono" spellcheck="false">
+            </div>
+
+            <div class="v5-row2">
+              <div class="field">
+                <label class="field__label" for="price">Precio</label>
+                <div class="money-wrap"><input class="input input--money" id="price" inputmode="numeric"></div>
+                <div class="field__hint" id="priceHint"></div>
+              </div>
+              <div class="field">
+                <span class="field__label">Contra el grupo</span>
+                <div class="seg v5-seg" id="groupSeg"></div>
+              </div>
+            </div>
+
+            <div class="addon" id="freeAddon" style="margin-top:14px">
+              <div class="addon__ic" data-ic="envios"></div>
+              <div class="addon__body">
+                <div class="addon__title">Envío gratis</div>
+                <div class="addon__desc" id="freeDesc"></div>
+              </div>
+              <button class="switch" id="freeSwitch" aria-label="Envío gratis"></button>
+            </div>
+          </div>
+
+          <!-- ---- Paso 4 ---- -->
+          <div class="pane" data-pane="4">
+            <div class="stephead">
+              <div class="stephead__k">Listo</div>
+              <h2>Así quedarías</h2>
+              <p>Te ubicamos dentro del grupo según el precio.</p>
+            </div>
+            <div class="summary">
+              <div class="summary__k">Tu publicación, en una frase</div>
+              <div class="summary__sentence" id="sumSentence"></div>
+              <div class="summary__grid" id="sumGrid"></div>
+            </div>
+            <div class="control-note" id="tip"></div>
+            <div class="v5-rankwrap">
+              <div class="v5-rankh">Ranking por precio · <span id="rankName"></span></div>
+              <div class="picker" style="margin-top:8px"><div id="rank"></div></div>
+            </div>
+          </div>
+
+          <div class="navbar">
+            <button class="btn btn--ghost" id="btnBack" data-ic="undo"><span>Atrás</span></button>
+            <div class="field-error" id="navError"><span data-ic="alert"></span><span id="navErrorTxt"></span></div>
+            <div class="navbar__spacer"></div>
+            <button class="btn btn--primary" id="btnNext"><span>Siguiente</span></button>
+            <button class="btn btn--teal hidden" id="btnSave" data-ic="check"><span>Guardar grupos</span></button>
+          </div>
+        </section>
 
       </div>
     </div>
@@ -94,6 +223,6 @@
 <div class="toasts" id="toasts"></div>
 
 <script src="js/icons.js?v=14"></script>
-<script src="js/v5.js?v=3"></script>
+<script src="js/v5.js?v=4"></script>
 </body>
 </html>

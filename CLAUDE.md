@@ -151,22 +151,28 @@ foco es **poca carga cognitiva**: el usuario elige con **selectores**, no escrib
   propósito: es la capa de entrada simple). La v2/index siguen siendo la versión avanzada
   (link "Versión avanzada" en la topbar de v3 → `v2.html`).
 
-## v5.html — Competencia: grupos + "dónde quedarías"
+## v5.html — Competencia: onboarding por pasos
 
 Pedido del equipo de RT: **seguir publicaciones** (máx. **10**), **armar 1–2 grupos** y que el
 usuario pueda elegir **una publicación propia o una nueva (no publicada)** para compararse con el grupo.
 
-> Rehecha **en una sola pantalla** tras dos rondas de feedback ("muy cargada", "parece un volante
-> de avión", "sigue siendo muy compleja"). Sin pasos, sin puntaje, sin botones "Probar", sin gráficos.
-> Si hay que sumar algo, que sea de a una cosa y sin romper esta simpleza.
+> Historia del feedback: v5 arrancó muy cargada ("volante de avión"), después quedó demasiado
+> pelada (una sola pantalla). La versión actual es el punto medio: **mismo wizard que v3**
+> (reusa `styles/v3.css`: steps, opt, picker, summary, navbar, empty/promise) y cada paso llega
+> **pre-armado** para que el usuario sólo revise. No sumar puntajes, gráficos ni controles extra.
 
-- **Pestañas = grupos** ("+ Nuevo grupo", doble clic para renombrar, hasta 4).
-- **1 · Seguí publicaciones:** buscador sobre `MARKET` (datos de ejemplo). Lo que seguís entra al
-  grupo abierto; si ya está en otro grupo, el botón la mueve. Tope `MAX_FOLLOW = 10` en total.
-- **2 · Fijate dónde quedarías:** elegís "Una publicación nueva" o una de `MINE`, ponés precio y
-  envío gratis. Muestra una frase (puesto, precio típico del grupo, envío gratis) y el **ranking por
-  precio** del grupo con tu fila resaltada.
-- **Autónomo:** sólo `icons.js` + `styles/v5.css`. Estado en `localStorage` `r8t.v5b`.
+- **Inicio:** 3 promesas (seguí · las agrupamos · comparate) + "Mis grupos" una vez guardado.
+- **1 · Seguir:** picker con buscador sobre `MARKET` (datos de ejemplo), selección múltiple, tope 10.
+- **2 · Grupos:** se arman solos (`buildGroups`): por tipo (in-ear / vincha); si es un solo tipo,
+  por precio; si son pocas, uno solo. Se renombra inline y se pasa una publicación al otro grupo
+  con la flechita. "Prefiero todas en un solo grupo" alterna.
+- **3 · Tu publicación:** "Una que ya tengo" (`MINE`) o "Una nueva". `prefillStep3` elige sola
+  la publicación tuya que corresponde, el grupo que le compite y el precio (el tuyo, o el típico).
+- **4 · Resultado:** frase + 4 datos (puesto, precio típico, envío gratis, la más barata), un
+  consejo con botón para aplicarlo (sumar envío gratis / precio para top 3) y el ranking por precio
+  con tu fila resaltada. "Guardar grupos" vuelve al inicio.
+- **Archivos:** `v5.html`, `js/v5.js`, `styles/v5.css` (+ `styles/v3.css`). Estado en
+  `localStorage` `r8t.v5c`.
 
 ## Diseño = Real Trends (NO cambiar sin motivo)
 
