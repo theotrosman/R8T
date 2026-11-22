@@ -60,6 +60,7 @@ ROADMAP); si se hace, conservar `blocks.js`/`strategies.js`/`simulate.js` casi t
 ```
 index.html            Shell de la app COMPLETA (editor de bloques como pantalla principal).
 v2.html               ★ Shell de la app SIMPLIFICADA "asistente-first" (ver más abajo).
+v3.html / v5.html     v3 = wizard Lite de repricing · v5 = Competencia: grupos + publicación de prueba.
 r8t-app.html          Copia SIN <html>/<head>/<body> para publicar como Artifact de Claude.
                       ⚠ Mantener su <body> sincronizado con index.html (o consolidar).
 assets/
@@ -149,6 +150,28 @@ foco es **poca carga cognitiva**: el usuario elige con **selectores**, no escrib
 - **Autónomo:** sólo depende de `icons.js` + `styles/v3.css` (no usa el motor de bloques, a
   propósito: es la capa de entrada simple). La v2/index siguen siendo la versión avanzada
   (link "Versión avanzada" en la topbar de v3 → `v2.html`).
+
+## v5.html — Competencia: grupos + publicación de prueba
+
+Pedido del equipo de RT: **seguir publicaciones** (máx. **10**), **armar 1–2 grupos** y que el
+usuario pueda **elegir una publicación propia o una idea nueva que no está en producción** para
+compararse contra el grupo. No es repricing: es la antesala (entender dónde quedarías).
+(No hay v4.html en el repo: el pedido fue directamente "v5".)
+
+- **Paso 1 · Seguir:** buscador sobre un "dump" de ejemplo (`MARKET` en `js/v5.js`), filtro
+  in-ear/vincha, seguir por **link de MeLi** (si el ID no está en el dump genera una publicación
+  simulada determinística). Tope duro `MAX_FOLLOW = 10`.
+- **Paso 2 · Grupos:** tablero con drag & drop (o botones "→ grupo"), **Armar grupos sugeridos**
+  (por tipo; si hay un solo tipo, por rango de precio), renombrar inline, stats por grupo.
+- **Paso 3 · Publicación de prueba (sandbox, nada se publica):** idea nueva o copia de una propia
+  (`MINE`). Muestra **puntaje 0–100** (`evaluate()`: precio vs mediana 35 %, envío gratis 20 %,
+  Full 10 %, cuotas 15 %, fotos 10 %, palabras clave del título 10 %), **tira de precios** con el
+  punto "Vos" arrastrable, **comparativa con botones "Probar"** que aplican el arreglo y muestran
+  cuántos puntos suma, y **curva de ganancia mensual según precio** con el mejor precio marcado.
+- Modelo de ventas didáctico: mediana de ventas del grupo × atributos × (precio/mediana)^-3.
+  Comisión 14 %, IIBB 3,5 %, envío gratis a cargo del vendedor. Reemplazar con datos reales.
+- **Autónomo:** sólo `icons.js` + `styles/v5.css` (clases con prefijo `v5-`). Estado en
+  `localStorage` `r8t.v5`; botón "Reiniciar demo" lo borra.
 
 ## Diseño = Real Trends (NO cambiar sin motivo)
 
